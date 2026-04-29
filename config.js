@@ -6,6 +6,7 @@ window.APP_CONFIG = {
 
 (function bootExtensions() {
   loadMapModule();
+  loadAttendanceModule();
   document.addEventListener('DOMContentLoaded', installIdeaFormHotfix);
 
   const knownCategories = [
@@ -17,10 +18,18 @@ window.APP_CONFIG = {
   const defaultSuggestion = { category: 'steuerung', subcategory: 'Leitungsstruktur' };
 
   function loadMapModule() {
-    if (document.querySelector('script[src="./map-module.js"]')) return;
+    if (document.querySelector('script[src^="./map-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './map-module.js';
+    script.src = './map-module.js?v=map-20260429-2';
+    document.head.appendChild(script);
+  }
+
+  function loadAttendanceModule() {
+    if (document.querySelector('script[src^="./attendance-module.js"]')) return;
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = './attendance-module.js?v=attendance-20260429-1';
     document.head.appendChild(script);
   }
 
