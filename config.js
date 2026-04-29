@@ -4,11 +4,24 @@ window.APP_CONFIG = {
   PROJECT_SLUG: 'lehrgrabung-kerpen-manheim-2026'
 };
 
+window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient) {
+  if (!window.__manheimSupabaseClient) {
+    window.__manheimSupabaseClient = createClient(
+      window.APP_CONFIG.SUPABASE_URL,
+      window.APP_CONFIG.SUPABASE_ANON_KEY,
+      { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+    );
+  }
+  return window.__manheimSupabaseClient;
+};
+
 (function bootExtensions() {
   loadMapModule();
   loadAttendanceModule();
   loadParticipantTimelineModule();
+  document.addEventListener('DOMContentLoaded', installModernAuthScreen);
   document.addEventListener('DOMContentLoaded', installIdeaFormHotfix);
+  document.addEventListener('DOMContentLoaded', installPasswordToggle);
 
   const knownCategories = [
     ['steuerung', 'Steuerung'], ['personal', 'Personal'], ['dokumentation', 'Dokumentation'],
@@ -40,6 +53,60 @@ window.APP_CONFIG = {
     script.type = 'module';
     script.src = './participant-timeline-module.js?v=timeline-20260429-1';
     document.head.appendChild(script);
+  }
+
+  function installModernAuthScreen() {
+    if (!document.querySelector('link[href="./auth-login.css"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = './auth-login.css?v=auth-20260429-1';
+      document.head.appendChild(link);
+    }
+
+    const screen = document.getElementById('authScreen');
+    if (!screen || screen.dataset.modernAuth === 'true') return;
+    screen.dataset.modernAuth = 'true';
+    screen.innerHTML = `
+      <div class="auth-bg-mark auth-bg-mark-logo" aria-hidden="true"><img src="./assets/favicon.png" alt=""></div>
+      <div class="auth-bg-mark auth-bg-mark-word" aria-hidden="true">Kerpen-<br>Manheim<br><span>2026</span></div>
+      <div class="auth-card">
+        <div class="auth-content">
+          <img class="auth-logo-mark" src="./assets/favicon.png" alt="" aria-hidden="true">
+          <div class="hero-mark">LMU / Lehrgrabung 2026</div>
+          <div class="auth-brand">
+            <div class="auth-brand-logo"><img src="./assets/favicon.png" alt="Kerpen-Manheim 2026 Lehrgrabung Planer"></div>
+            <div class="auth-brand-text"><strong>Kerpen-<br>Manheim <span>2026</span></strong><small>Lehrgrabung Planer</small></div>
+          </div>
+          <h1>Willkommen zur&uuml;ck</h1>
+          <p class="lead">Melden Sie sich an, um Ihren Lehrgrabungs-Planer zu verwalten, Rollen zu vergeben und den &Uuml;berblick zu behalten.</p>
+          <div class="auth-tabs">
+            <button class="auth-tab active" data-auth-tab="login" type="button"><span aria-hidden="true">&#128100;</span>Anmelden</button>
+            <button class="auth-tab" data-auth-tab="signup" type="button"><span aria-hidden="true">+</span>Registrieren</button>
+            <button class="auth-tab" data-auth-tab="magic" type="button"><span aria-hidden="true">&#8599;</span>Magic Link</button>
+          </div>
+          <form id="loginForm" class="auth-panel active">
+            <label class="span-2" for="loginEmail">E-Mail-Adresse<span class="auth-field"><span class="auth-field-icon" aria-hidden="true">@</span><input id="loginEmail" type="email" name="email" autocomplete="email" placeholder="name@beispiel.de" required></span></label>
+            <label class="span-2" for="loginPassword">Passwort<span class="auth-field"><span class="auth-field-icon" aria-hidden="true">&#9679;</span><input id="loginPassword" type="password" name="password" autocomplete="current-password" placeholder="Ihr Passwort" required><button id="passwordToggle" class="password-toggle" type="button" aria-label="Passwort anzeigen">&#9673;</button></span></label>
+            <div class="auth-form-options span-2"><label class="auth-checkbox"><input type="checkbox" name="remember">Angemeldet bleiben</label><a href="#">Passwort vergessen?</a></div>
+            <button class="btn primary wide" type="submit">Anmelden <span aria-hidden="true">&#8594;</span></button>
+          </form>
+          <form id="signupForm" class="auth-panel">
+            <label class="span-2" for="signupName">Voller Name<span class="auth-field"><span class="auth-field-icon" aria-hidden="true">&#128100;</span><input id="signupName" type="text" name="full_name" autocomplete="name" placeholder="Ihr Name" required></span></label>
+            <label class="span-2" for="signupEmail">E-Mail-Adresse<span class="auth-field"><span class="auth-field-icon" aria-hidden="true">@</span><input id="signupEmail" type="email" name="email" autocomplete="email" placeholder="name@beispiel.de" required></span></label>
+            <label class="span-2" for="signupPassword">Passwort<span class="auth-field"><span class="auth-field-icon" aria-hidden="true">&#9679;</span><input id="signupPassword" type="password" name="password" autocomplete="new-password" placeholder="Mindestens 8 Zeichen" minlength="8" required></span></label>
+            <button class="btn primary wide" type="submit">Registrieren <span aria-hidden="true">&#8594;</span></button>
+          </form>
+          <form id="magicForm" class="auth-panel">
+            <label class="span-2" for="magicEmail">E-Mail-Adresse<span class="auth-field"><span class="auth-field-icon" aria-hidden="true">@</span><input id="magicEmail" type="email" name="email" autocomplete="email" placeholder="name@beispiel.de" required></span></label>
+            <button class="btn primary wide" type="submit">Magic Link senden <span aria-hidden="true">&#8599;</span></button>
+          </form>
+          <div id="authMessage" class="message-box"></div>
+          <div class="auth-divider"><span></span><em>oder</em><span></span></div>
+          <div class="auth-help"><span class="auth-help-icon" aria-hidden="true">i</span><p><strong>Wichtig:</strong> Nach der Registrierung ist ein neues Konto standardm&auml;&szlig;ig <em>nicht freigeschaltet</em>. Sie als Admin aktivieren Teilnehmende und vergeben Rollen sp&auml;ter im Adminbereich.</p></div>
+        </div>
+      </div>
+      <footer class="auth-footer">&copy; 2026 Lehrgrabung Kerpen-Manheim. Alle Rechte vorbehalten.</footer>
+    `;
   }
 
   function installIdeaFormHotfix() {
@@ -86,7 +153,7 @@ window.APP_CONFIG = {
           select.value = suggestion.category;
         } else syncCategory();
         if (!manualSub && sub && (!sub.value || sub.value === defaultSuggestion.subcategory)) sub.value = suggestion.subcategory;
-        if (box) box.innerHTML = `Vorschlag: <strong>${escapeHtml(input.value)}</strong> → <strong>${escapeHtml(sub?.value || suggestion.subcategory)}</strong>`;
+        if (box) box.innerHTML = `Vorschlag: <strong>${escapeHtml(input.value)}</strong>  <strong>${escapeHtml(sub?.value || suggestion.subcategory)}</strong>`;
       };
 
       input.addEventListener('input', () => { manualCategory = true; syncCategory(); suggest(); });
@@ -115,7 +182,7 @@ window.APP_CONFIG = {
           setSync('Speichere ...');
           if (box) box.textContent = 'Idee wird gespeichert ...';
           const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
-          const client = createClient(window.APP_CONFIG.SUPABASE_URL, window.APP_CONFIG.SUPABASE_ANON_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+          const client = window.getManheimSupabaseClient(createClient);
           const { data: sessionData, error: sessionError } = await withTimeout(client.auth.getSession(), 'Session laden');
           if (sessionError) throw sessionError;
           const userId = sessionData?.session?.user?.id;
@@ -142,17 +209,29 @@ window.APP_CONFIG = {
     }, 0);
   }
 
+  function installPasswordToggle() {
+    const button = document.getElementById('passwordToggle');
+    const input = document.getElementById('loginPassword');
+    if (!button || !input) return;
+    button.addEventListener('click', () => {
+      const show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      button.innerHTML = show ? '&#9675;' : '&#9673;';
+      button.setAttribute('aria-label', show ? 'Passwort verbergen' : 'Passwort anzeigen');
+    });
+  }
+
   function categorize(text) {
     const t = String(text || '').toLowerCase();
     const rules = [
       [gisWords, 'dokumentation', 'GIS / Kartenviewer'],
       [['befund','profil','planum','foto','sfm','dokumentation','nummer','fundliste','qc'], 'dokumentation', 'Qualitaetskontrolle'],
-      [['schnitt','schnittleiter','antoniterhof','hofkapelle','marktplatz','villa','grabenstruktur','flaeche','fläche'], 'schnitte', 'Feldorganisation'],
-      [['teilnehmer','studierende','personal','zusage','verfuegbarkeit','verfügbarkeit','onboarding','schicht'], 'personal', 'Teilnehmendenmanagement'],
-      [['buero','büro','haus','transport','fahrzeug','lager','material','warnweste','unterkunft'], 'logistik', 'Infrastruktur'],
+      [['schnitt','schnittleiter','antoniterhof','hofkapelle','marktplatz','villa','grabenstruktur','flaeche','flche'], 'schnitte', 'Feldorganisation'],
+      [['teilnehmer','studierende','personal','zusage','verfuegbarkeit','verfgbarkeit','onboarding','schicht'], 'personal', 'Teilnehmendenmanagement'],
+      [['buero','bro','haus','transport','fahrzeug','lager','material','warnweste','unterkunft'], 'logistik', 'Infrastruktur'],
       [['fund','probe','tierknochen','reinigung','datenbank'], 'funde', 'Fundbearbeitung'],
       [['notfall','erste hilfe','hitze','sicherheit','wetter','unfall'], 'sicherheit', 'Notfall'],
-      [['landesamt','amt','professor','auflage','rueckmeldung','rückmeldung'], 'schnittstelle_amt', 'Professor als Schnittstelle']
+      [['landesamt','amt','professor','auflage','rueckmeldung','rckmeldung'], 'schnittstelle_amt', 'Professor als Schnittstelle']
     ];
     const hit = rules.find(([keys]) => keys.some(key => t.includes(key)));
     return hit ? { category: hit[1], subcategory: hit[2] } : defaultSuggestion;
