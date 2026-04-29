@@ -7,6 +7,7 @@ window.APP_CONFIG = {
 (function bootExtensions() {
   loadMapModule();
   loadAttendanceModule();
+  loadParticipantTimelineModule();
   document.addEventListener('DOMContentLoaded', installIdeaFormHotfix);
 
   const knownCategories = [
@@ -30,6 +31,14 @@ window.APP_CONFIG = {
     const script = document.createElement('script');
     script.type = 'module';
     script.src = './attendance-module.js?v=attendance-20260429-1';
+    document.head.appendChild(script);
+  }
+
+  function loadParticipantTimelineModule() {
+    if (document.querySelector('script[src^="./participant-timeline-module.js"]')) return;
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = './participant-timeline-module.js?v=timeline-20260429-1';
     document.head.appendChild(script);
   }
 
