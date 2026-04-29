@@ -5,15 +5,8 @@ window.APP_CONFIG = {
 };
 
 (function bootExtensions() {
-  document.addEventListener('DOMContentLoaded', () => {
-    installIdeaFormHotfix();
-    if (!document.querySelector('script[src="./map-module.js"]')) {
-      const script = document.createElement('script');
-      script.type = 'module';
-      script.src = './map-module.js';
-      document.body.appendChild(script);
-    }
-  });
+  loadMapModule();
+  document.addEventListener('DOMContentLoaded', installIdeaFormHotfix);
 
   const knownCategories = [
     ['steuerung', 'Steuerung'], ['personal', 'Personal'], ['dokumentation', 'Dokumentation'],
@@ -22,6 +15,14 @@ window.APP_CONFIG = {
   ];
   const gisWords = ['karte','maps','google maps','geopackage','gis','layer','layerauswahl','ebene','projektion','viewer','upload'];
   const defaultSuggestion = { category: 'steuerung', subcategory: 'Leitungsstruktur' };
+
+  function loadMapModule() {
+    if (document.querySelector('script[src="./map-module.js"]')) return;
+    const script = document.createElement('script');
+    script.type = 'module';
+    script.src = './map-module.js';
+    document.head.appendChild(script);
+  }
 
   function installIdeaFormHotfix() {
     window.setTimeout(() => {
