@@ -52,3 +52,34 @@ Die Rechte werden durch Supabase RLS abgesichert.
 7. Sichtbare Daten oder einzelne Layer als GeoJSON exportieren.
 
 Shape-Import erwartet eine ZIP-Datei und wird clientseitig nach GeoJSON konvertiert.
+
+## Tagesanwesenheit
+
+Das Tagesstatus-Modul wird über `attendance-module.js` und `attendance-module.css` geladen. Es ersetzt die alten statischen Sidebar-Infos durch einen operativen Tagesstatus.
+
+### SQL
+
+Für die Anwesenheitsfunktion zusätzlich ausführen:
+
+1. `supabase/attendance_module.sql`
+
+Die Live-Datenbank dieses Projekts wurde bereits erweitert.
+
+### Datenmodell
+
+- `daily_attendance`: genau ein Tagesstatus pro Person und Datum.
+- Wichtige Felder: `participant_id`, `date`, `status`, `note`, `created_by`, `updated_by`, `created_at`, `updated_at`.
+- Erlaubte Statuswerte: `anwesend`, `abgesagt`, `krank`, `sonstiger_ausfall`, `verspaetet`, `halbtags`, `unklar`.
+
+### Anzeige und Pflege
+
+- Sidebar unten zeigt Datum, theoretisch laut Liste geplante Personen, reale Anwesenheit und Ausfälle.
+- `Anwesend laut Liste` zählt Personen, deren Verfügbarkeitszeitraum den heutigen Tag einschließt und deren Status nicht inaktiv oder anzufragen ist.
+- `Real anwesend` kommt ausschließlich aus `daily_attendance`.
+- Im Bereich `Teilnehmende` erscheint die Box `Heutige Anwesenheit`; dort pflegen berechtigte Rollen Status und Notiz pro Person.
+
+### Rollenrechte
+
+- `admin`, `technical_lead`, `assistant`: Tagesanwesenheit anlegen und bearbeiten.
+- `admin`, `technical_lead`: Tagesanwesenheit löschen.
+- alle aktiven freigeschalteten Rollen: lesen.
