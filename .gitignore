@@ -1,0 +1,13 @@
+# Lokale Editor- und Systemdateien
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Lokale Arbeitsdateien
+*.log
+*.tmp
+*.bak
+
+# Optional: lokale Kopien mit echten Zugangsdaten
+config.local.js

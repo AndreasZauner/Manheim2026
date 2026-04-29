@@ -1,0 +1,20 @@
+KURZCHECKLISTE – START
+======================
+
+[ ] GitHub-Konto vorhanden
+[ ] Neues Repository erstellt
+[ ] Projektdateien hochgeladen
+[ ] Supabase-Projekt erstellt
+[ ] schema.sql ausgeführt
+[ ] seed.sql ausgeführt
+[ ] Project URL kopiert
+[ ] anon key kopiert
+[ ] config.js ausgefüllt
+[ ] Cloudflare-Konto vorhanden
+[ ] Repository mit Cloudflare Pages verbunden
+[ ] Seite online veröffentlicht
+[ ] Cloudflare-URL in Supabase als Site URL eingetragen
+[ ] Redirect URL eingetragen
+[ ] Eigenes Konto auf der Seite registriert
+[ ] Per SQL zum Admin gemacht
+[ ] Erster Login als Admin erfolgreich

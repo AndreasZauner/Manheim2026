@@ -1,0 +1,15 @@
+GITHUB-UPLOAD IM BROWSER – GANZ KURZ
+===================================
+
+1. Neues Repository erstellen
+2. Add file
+3. Upload files
+4. Alle Dateien aus diesem Ordner hineinziehen
+5. Commit changes klicken
+6. Fertig
+
+Später können Sie einzelne Dateien direkt im Browser ändern:
+- Datei anklicken
+- Stift-Symbol anklicken
+- ändern
+- Commit changes
