@@ -5,6 +5,16 @@ window.APP_CONFIG = {
 };
 
 (function installIdeaFormHotfix() {
+  const knownCategories = [
+    ['steuerung', 'Steuerung'],
+    ['personal', 'Personal'],
+    ['dokumentation', 'Dokumentation'],
+    ['schnitte', 'Schnitte'],
+    ['logistik', 'Logistik'],
+    ['funde', 'Funde'],
+    ['sicherheit', 'Sicherheit'],
+    ['schnittstelle_amt', 'Schnittstelle Amt']
+  ];
   const gisWords = ['karte','maps','google maps','geopackage','gis','layer','layerauswahl','ebene','projektion','viewer','upload'];
   const defaultSuggestion = { category: 'steuerung', subcategory: 'Leitungsstruktur' };
 
@@ -53,6 +63,10 @@ window.APP_CONFIG = {
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    window.setTimeout(enhanceIdeaForm, 0);
+  });
+
+  function enhanceIdeaForm() {
     const form = document.getElementById('ideaForm');
     if (!form) return;
 
@@ -66,9 +80,57 @@ window.APP_CONFIG = {
     let manualCategory = false;
     let manualSubcategory = false;
     let selectedCategory = category?.value || defaultSuggestion.category;
+    const categoryInput = replaceCategorySelect(category);
+    categoryInput.value = labelForCategory(selectedCategory);
 
     function setSync(text) {
       if (syncState) syncState.textContent = text;
+    }
+
+    function replaceCategorySelect(select) {
+      if (!select || document.getElementById('ideaCategoryText')) return document.getElementById('ideaCategoryText');
+      const datalist = document.createElement('datalist');
+      datalist.id = 'ideaCategoryOptions';
+      knownCategories.forEach(([, label]) => {
+        const option = document.createElement('option');
+        option.value = label;
+        datalist.appendChild(option);
+      });
+      const input = document.createElement('input');
+      input.id = 'ideaCategoryText';
+      input.type = 'text';
+      input.setAttribute('list', datalist.id);
+      input.setAttribute('autocomplete', 'off');
+      input.placeholder = 'Kategorie waehlen oder neu eintippen';
+      input.style.width = '100%';
+      select.insertAdjacentElement('afterend', datalist);
+      select.insertAdjacentElement('afterend', input);
+      select.style.display = 'none';
+      select.tabIndex = -1;
+      return input;
+    }
+
+    function labelForCategory(value) {
+      return knownCategories.find(([key]) => key === value)?.[1] || value || '';
+    }
+
+    function valueForCategoryInput(value) {
+      const cleaned = String(value || '').trim();
+      return knownCategories.find(([, label]) => label.toLowerCase() === cleaned.toLowerCase())?.[0] || cleaned;
+    }
+
+    function ensureSelectOption(value, label = value) {
+      if (!category || !value) return;
+      if (![...category.options].some(option => option.value === value)) {
+        category.appendChild(new Option(label, value));
+      }
+      category.value = value;
+      selectedCategory = value;
+    }
+
+    function syncCategoryFromInput() {
+      const value = valueForCategoryInput(categoryInput.value);
+      ensureSelectOption(value || defaultSuggestion.category, categoryInput.value || labelForCategory(defaultSuggestion.category));
     }
 
     function applySuggestion() {
@@ -76,17 +138,30 @@ window.APP_CONFIG = {
       const suggestion = categorizeIdea(`${title?.value || ''} ${body?.value || ''}`);
       if (!manualCategory) {
         selectedCategory = suggestion.category;
-        category.value = suggestion.category;
+        ensureSelectOption(suggestion.category, labelForCategory(suggestion.category));
+        categoryInput.value = labelForCategory(suggestion.category);
       } else {
-        category.value = selectedCategory;
+        syncCategoryFromInput();
       }
       if (!manualSubcategory && (!subcategory.value || subcategory.value === defaultSuggestion.subcategory)) {
         subcategory.value = suggestion.subcategory;
       }
       if (suggestionBox) {
-        suggestionBox.innerHTML = `Vorschlag: <strong>${escapeHtml(category.options[category.selectedIndex]?.text || suggestion.category)}</strong> → <strong>${escapeHtml(subcategory.value || suggestion.subcategory)}</strong>`;
+        suggestionBox.innerHTML = `Vorschlag: <strong>${escapeHtml(categoryInput.value || labelForCategory(suggestion.category))}</strong> → <strong>${escapeHtml(subcategory.value || suggestion.subcategory)}</strong>`;
       }
     }
+
+    categoryInput?.addEventListener('input', () => {
+      manualCategory = true;
+      syncCategoryFromInput();
+      applySuggestion();
+    });
+
+    categoryInput?.addEventListener('change', () => {
+      manualCategory = true;
+      syncCategoryFromInput();
+      applySuggestion();
+    });
 
     form.addEventListener('input', event => {
       if (event.target?.name === 'category') {
@@ -111,6 +186,7 @@ window.APP_CONFIG = {
       event.preventDefault();
       event.stopImmediatePropagation();
       applySuggestion();
+      syncCategoryFromInput();
 
       const data = {
         title: String(title?.value || '').trim(),
@@ -144,6 +220,7 @@ window.APP_CONFIG = {
         manualCategory = false;
         manualSubcategory = false;
         selectedCategory = defaultSuggestion.category;
+        categoryInput.value = labelForCategory(defaultSuggestion.category);
         if (suggestionBox) suggestionBox.textContent = 'Idee gespeichert. Daten werden neu geladen ...';
         setSync('Synchronisiert');
         window.setTimeout(() => window.location.reload(), 700);
@@ -157,5 +234,5 @@ window.APP_CONFIG = {
         if (submitButton) submitButton.disabled = false;
       }
     }, true);
-  });
+  }
 })();
