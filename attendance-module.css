@@ -1,0 +1,237 @@
+.daily-status-box {
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(191, 208, 223, .28);
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(255, 255, 255, .08);
+  color: #edf6ff;
+}
+
+.daily-status-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.daily-status-head h2 {
+  margin: 0;
+  font-size: .95rem;
+  line-height: 1.2;
+}
+
+.daily-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #56d18f;
+  box-shadow: 0 0 0 3px rgba(86, 209, 143, .16);
+}
+
+.daily-status-dot.error {
+  background: #f2766b;
+  box-shadow: 0 0 0 3px rgba(242, 118, 107, .16);
+}
+
+.daily-status-date {
+  color: #bfd0df;
+  font-size: .84rem;
+  font-weight: 700;
+}
+
+.daily-status-loading,
+.daily-status-error {
+  color: #d7e5f2;
+  font-size: .84rem;
+}
+
+.daily-status-error {
+  color: #ffd1cc;
+}
+
+.daily-status-grid {
+  display: grid;
+  gap: 6px;
+}
+
+.daily-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 9px;
+  padding: 8px 9px;
+  background: rgba(255, 255, 255, .1);
+  color: #dbe9f6;
+  font-size: .86rem;
+}
+
+.daily-status-row strong {
+  color: #fff;
+  font-size: 1.12rem;
+}
+
+.daily-status-row.primary {
+  background: rgba(45, 132, 226, .28);
+}
+
+.daily-status-breakdown {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 5px;
+  color: #c8d9e8;
+  font-size: .8rem;
+}
+
+.daily-status-breakdown span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.daily-status-breakdown strong {
+  color: #fff;
+}
+
+.daily-status-warning {
+  border-radius: 999px;
+  padding: 6px 8px;
+  background: #fff2cc;
+  color: #7a4d00;
+  font-size: .78rem;
+  font-weight: 800;
+  text-align: center;
+}
+
+#signOutButton.signout-strong {
+  margin-top: 8px;
+  border: 1px solid #f1b7b1;
+  background: #fff4f2;
+  color: #8f1d18;
+  font-weight: 900;
+  box-shadow: 0 10px 22px rgba(0, 0, 0, .12);
+}
+
+#signOutButton.signout-strong:hover,
+#signOutButton.signout-strong:focus-visible {
+  border-color: #e36a60;
+  background: #ffd9d6;
+  color: #61110d;
+  outline: 3px solid rgba(255, 217, 214, .28);
+  outline-offset: 2px;
+}
+
+.attendance-panel {
+  margin-bottom: 18px;
+}
+
+.attendance-edit-hint {
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: .8rem;
+  font-weight: 800;
+}
+
+.attendance-edit-hint.can-edit {
+  background: #e7f8ef;
+  color: #08723f;
+}
+
+.attendance-edit-hint.read-only {
+  background: #eef3f8;
+  color: var(--muted);
+}
+
+.attendance-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+.attendance-summary span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fff;
+  color: var(--muted);
+  font-size: .86rem;
+}
+
+.attendance-summary strong {
+  color: var(--text);
+}
+
+.attendance-summary .is-warning {
+  background: #fff8df;
+  color: #815500;
+}
+
+.attendance-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.attendance-note,
+.attendance-empty {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #f8fbff;
+  color: var(--muted);
+}
+
+.attendance-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(150px, .8fr) minmax(220px, 1fr) minmax(80px, auto);
+  align-items: end;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px;
+  background: #fff;
+}
+
+.attendance-person {
+  display: grid;
+  gap: 3px;
+}
+
+.attendance-person span {
+  color: var(--muted);
+  font-size: .84rem;
+}
+
+.attendance-row label {
+  display: grid;
+  gap: 5px;
+  font-size: .82rem;
+  font-weight: 800;
+  color: var(--muted);
+}
+
+.attendance-row select,
+.attendance-row input {
+  min-width: 0;
+}
+
+.attendance-save-state {
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 800;
+  min-height: 22px;
+  align-self: center;
+}
+
+@media (max-width: 980px) {
+  .attendance-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .attendance-row {
+    grid-template-columns: 1fr;
+  }
+}
