@@ -226,12 +226,12 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
     const rules = [
       [gisWords, 'dokumentation', 'GIS / Kartenviewer'],
       [['befund','profil','planum','foto','sfm','dokumentation','nummer','fundliste','qc'], 'dokumentation', 'Qualitaetskontrolle'],
-      [['schnitt','schnittleiter','antoniterhof','hofkapelle','marktplatz','villa','grabenstruktur','flaeche','flche'], 'schnitte', 'Feldorganisation'],
-      [['teilnehmer','studierende','personal','zusage','verfuegbarkeit','verfgbarkeit','onboarding','schicht'], 'personal', 'Teilnehmendenmanagement'],
-      [['buero','bro','haus','transport','fahrzeug','lager','material','warnweste','unterkunft'], 'logistik', 'Infrastruktur'],
+      [['schnitt','schnittleiter','antoniterhof','hofkapelle','marktplatz','villa','grabenstruktur','flaeche','fl\u00e4che'], 'schnitte', 'Feldorganisation'],
+      [['teilnehmer','studierende','personal','zusage','verfuegbarkeit','verf\u00fcgbarkeit','onboarding','schicht'], 'personal', 'Teilnehmendenmanagement'],
+      [['buero','b\u00fcro','haus','transport','fahrzeug','lager','material','warnweste','unterkunft'], 'logistik', 'Infrastruktur'],
       [['fund','probe','tierknochen','reinigung','datenbank'], 'funde', 'Fundbearbeitung'],
       [['notfall','erste hilfe','hitze','sicherheit','wetter','unfall'], 'sicherheit', 'Notfall'],
-      [['landesamt','amt','professor','auflage','rueckmeldung','rckmeldung'], 'schnittstelle_amt', 'Professor als Schnittstelle']
+      [['landesamt','amt','professor','auflage','rueckmeldung','r\u00fcckmeldung'], 'schnittstelle_amt', 'Professor als Schnittstelle']
     ];
     const hit = rules.find(([keys]) => keys.some(key => t.includes(key)));
     return hit ? { category: hit[1], subcategory: hit[2] } : defaultSuggestion;
