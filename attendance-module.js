@@ -1,3 +1,4 @@
+import './participant-timeline-module.js?v=timeline-20260429-1';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 const EDIT_ROLES = ['admin', 'technical_lead', 'assistant'];
