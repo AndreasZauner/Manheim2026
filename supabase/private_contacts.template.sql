@@ -1,0 +1,14 @@
+-- Optional template for private participant contact data.
+-- Keep real contact details out of GitHub. Fill this only inside the
+-- Supabase SQL Editor or another private, trusted environment.
+
+-- Example:
+-- insert into public.participant_private (participant_id, phone, email, internal_note)
+-- select id, 'TELEFON_HIER', 'EMAIL_HIER', 'INTERNE_NOTIZ_HIER'
+-- from public.participants
+-- where full_name = 'NAME_HIER'
+-- on conflict (participant_id) do update
+-- set phone = excluded.phone,
+--     email = excluded.email,
+--     internal_note = excluded.internal_note,
+--     updated_at = now();
