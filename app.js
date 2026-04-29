@@ -5,8 +5,7 @@ const APP_CONFIG = window.APP_CONFIG || {};
 const SUPABASE_URL = APP_CONFIG.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = APP_CONFIG.SUPABASE_ANON_KEY || '';
 const PROJECT_SLUG = APP_CONFIG.PROJECT_SLUG || 'lehrgrabung-kerpen-manheim-2026';
-const seedData = {"tasks": [{"title": "Offene Verfügbarkeiten und Zusagen mit Teilnehmenden klären", "description": "Unklare Zusagen, Zusatzwochen und Sonderfälle aus der Teilnehmerübersicht nachfassen.", "category": "personal", "subcategory": "Teilnehmendenmanagement", "due_date": "2026-05-08", "status": "offen", "priority": "hoch", "assigned_role": "Technische Leitung"}, {"title": "Schnittleiter benennen und Einsatzbereiche vorstrukturieren", "description": "Schnitte/Teilflächen und Lehrverantwortung pro Schnittleiter definieren.", "category": "schnitte", "subcategory": "Feldorganisation", "due_date": "2026-05-15", "status": "offen", "priority": "hoch", "assigned_role": "Technische Leitung"}, {"title": "Grabungsbüro in Kerpen sichern und Einrichtungsplan erstellen", "description": "Arbeitsplätze, Lager, Druck/Scan, Fundannahme, Strom und Internet festlegen.", "category": "logistik", "subcategory": "Grabungsbüro", "due_date": "2026-05-22", "status": "offen", "priority": "hoch", "assigned_role": "Technische Leitung"}, {"title": "Warnwestenbedarf und Größen erfassen", "description": "Stückzahlen nach Rollen, Größenmix und Druckvarianten für Team und Leitungsfunktionen festlegen.", "category": "logistik", "subcategory": "Ausstattung", "due_date": "2026-05-26", "status": "offen", "priority": "mittel", "assigned_role": "Technische Leitung"}, {"title": "Dokumentationssystem finalisieren", "description": "Nummernkreise, Befundblätter, Foto-Logik, Freigaben und QC-Prozess mit Assistenz festziehen.", "category": "dokumentation", "subcategory": "Standards", "due_date": "2026-06-05", "status": "offen", "priority": "hoch", "assigned_role": "Assistenz / Doku-QS"}, {"title": "Material- und Geräteinventar prüfen", "description": "Werkzeug, Kamera, Ladegeräte, Messausstattung, Fundmaterial, Regale und Verbrauchsmaterial erfassen.", "category": "logistik", "subcategory": "Material", "due_date": "2026-06-12", "status": "offen", "priority": "hoch", "assigned_role": "Technische Leitung"}, {"title": "Transport- und Pendelplan Buir–Kerpen–Manheim erstellen", "description": "Fahrzeuge, Fahrer, Schlüssel, Abfahrtszeiten und Materialtransport definieren.", "category": "logistik", "subcategory": "Transport", "due_date": "2026-06-19", "status": "offen", "priority": "mittel", "assigned_role": "Technische Leitung"}, {"title": "Onboarding-Paket für Studierende fertigstellen", "description": "Hausregeln, Tagesablauf, Sicherheitsunterweisung, Schnittzuweisung und Ansprechpersonen bündeln.", "category": "personal", "subcategory": "Onboarding", "due_date": "2026-06-26", "status": "offen", "priority": "mittel", "assigned_role": "Technische Leitung"}, {"title": "Leitungsbriefing mit Assistent und Schnittleitern vorbereiten", "description": "Berichtslinien, Freigabepunkte und tägliche Besprechungsstruktur vor Saisonbeginn testen.", "category": "steuerung", "subcategory": "Leitungsstruktur", "due_date": "2026-07-03", "status": "offen", "priority": "mittel", "assigned_role": "Technische Leitung"}, {"title": "Sicherheits- und Notfallstruktur einsatzfähig machen", "description": "Erste Hilfe, Notfallkontakte, Hitze-/Wetterregime und Feldkommunikation praktisch vorbereiten.", "category": "sicherheit", "subcategory": "Notfall", "due_date": "2026-07-10", "status": "offen", "priority": "hoch", "assigned_role": "Technische Leitung"}, {"title": "Einrichtungswoche starten", "description": "Haus, Büro, Lager, Nummernkreise, Materialwege und Einweisungen live anfahren.", "category": "steuerung", "subcategory": "Grabungsstart", "due_date": "2026-07-27", "status": "offen", "priority": "hoch", "assigned_role": "Technische Leitung"}, {"title": "Abschlussstrategie zwei Wochen vor Ende aktivieren", "description": "Keine neuen Großflächen ohne Abschlusskapazität; Doku- und Fundrückstände abbauen.", "category": "steuerung", "subcategory": "Abschluss", "due_date": "2026-09-25", "status": "offen", "priority": "hoch", "assigned_role": "Technische Leitung"}], "notes": [{"title": "Rollenmodell der Grabung", "body": "Professor übernimmt Amtsebene und rechtlich-organisatorische Außenebene. Technische Grabungsleitung steuert operativ. Assistenz überwacht Dokumentationsqualität. Schnittleiter lehren im Feld. Studierende arbeiten unter Anleitung.", "category": "steuerung", "subcategory": "Leitungsstruktur", "note_type": "decision", "status": "aktiv"}, {"title": "Untersuchungsschwerpunkte", "body": "Antoniterhof Priorität 1, Hofkapelle Priorität 2, Erweiterung Richtung historischer Marktplatz Priorität 3, römische Grabenstruktur/Villa-rustica-Frage Priorität 4, Eremitage optional nachrangig.", "category": "schnitte", "subcategory": "Flächenpriorisierung", "note_type": "note", "status": "aktiv"}, {"title": "Unterkunft und Infrastruktur", "body": "Grabungshaus in Kerpen-Buir ist als Unterkunft gesetzt. Grabungsbüro in Kerpen muss einsatzfähig eingerichtet werden. Wohn- und Arbeitsfunktionen klar trennen.", "category": "logistik", "subcategory": "Infrastruktur", "note_type": "note", "status": "aktiv"}, {"title": "Dokumentationsprinzip", "body": "Kein Profilabbau und kein Befundabschluss ohne dokumentarische Freigabe. Assistenz kontrolliert täglich Nummernkreise, Befundblätter, Fotos, Pläne und Nachdokumentation.", "category": "dokumentation", "subcategory": "Freigaben", "note_type": "decision", "status": "aktiv"}, {"title": "Lehrgrabungsprinzip", "body": "Schnittleiter sind nicht nur Aufsicht, sondern didaktische Anleiter. Lernaufgaben, qualitätskritische Aufgaben und zeitkritische Aufgaben müssen bewusst getrennt werden.", "category": "personal", "subcategory": "Lehre", "note_type": "decision", "status": "aktiv"}, {"title": "Tägliche Leitungsroutine", "body": "Morgens Leitungsbriefing, tagsüber Rundgänge und Rückmeldungen aus allen Schnitten, abends Kurz-Auswertung mit offenen Punkten und Plan für den Folgetag.", "category": "steuerung", "subcategory": "Tagesbetrieb", "note_type": "note", "status": "aktiv"}, {"title": "Teilnehmendenlage laut Auswertung", "body": "Bisher 16 Personen in der Übersicht; Maximalbelegung laut Auswertungsblatt 10 gleichzeitig, Durchschnitt 4,4 aktive Teilnehmende.", "category": "personal", "subcategory": "Kapazität", "note_type": "note", "status": "aktiv"}, {"title": "Offene Personalfälle", "body": "Zu klären sind u. a. Arbeitgeberfreigabe Rudolf Jürgens, Verlängerungsoption Jakob Redepenning, Sardinien-Pause Jakob Hetesy, Datumsangaben Finn Fesq und Phil Föckersperger.", "category": "personal", "subcategory": "Offene Punkte", "note_type": "idea", "status": "offen"}, {"title": "Warnwesten und Außenauftritt", "body": "Bestellung hochwertiger, aber preisgünstiger Warnwesten mit Schriftzug und Unilogo als separates Beschaffungspaket einplanen.", "category": "logistik", "subcategory": "Ausstattung", "note_type": "idea", "status": "offen"}], "participants": [{"full_name": "Yva Stamminger", "public_role": "Teilnehmende", "availability_from": "2026-08-10", "availability_to": "2026-08-28", "status": "zugesagt", "availability_note": "Auch andere Termine möglich; nicht 31.08.–04.09.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Mijana Terzic-Tanaskovic", "public_role": "Teilnehmende", "availability_from": "2026-08-03", "availability_to": "2026-08-28", "status": "zugesagt", "availability_note": "Auch ab 01.08 möglich; evtl. bis 31.08.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Verena Laubenbacher", "public_role": "Teilnehmende", "availability_from": "2026-08-03", "availability_to": "2026-08-24", "status": "zugesagt", "availability_note": "", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Anton Bönisch", "public_role": "Teilnehmende", "availability_from": "2026-08-10", "availability_to": "2026-09-04", "status": "zugesagt", "availability_note": "", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Rudolf Jürgens", "public_role": "Teilnehmende", "availability_from": "2026-07-27", "availability_to": "2026-08-14", "status": "zu_klären", "availability_note": "Finale Abklärung mit dem Arbeitgeber steht noch aus.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Marie Doetkotte", "public_role": "Teilnehmende", "availability_from": "2026-07-27", "availability_to": "2026-08-14", "status": "zugesagt", "availability_note": "", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Moritz Frimberger", "public_role": "Teilnehmende", "availability_from": "2026-08-03", "availability_to": "2026-08-23", "status": "zugesagt", "availability_note": "Auch spätere Termine möglich; nicht möglich am 12.09.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Jakob Redepenning", "public_role": "Teilnehmende", "availability_from": "2026-07-27", "availability_to": "2026-08-16", "status": "zu_klären", "availability_note": "Möglicherweise auch länger; Prüfungsleistungen anderer Kurse noch offen.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Alexander Voßberg", "public_role": "Teilnehmende", "availability_from": "2026-09-09", "availability_to": "2026-09-30", "status": "zugesagt", "availability_note": "Erste Ausgrabung.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Claudia Heindl", "public_role": "Teilnehmende", "availability_from": "2026-08-29", "availability_to": "2026-09-19", "status": "zugesagt", "availability_note": "Zusatzwoche noch flexibel planbar.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Clara Hausberg", "public_role": "Teilnehmende", "availability_from": "2026-08-08", "availability_to": "2026-09-19", "status": "zugesagt", "availability_note": "Erste Ausgrabung.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Jakob Hetesy", "public_role": "Teilnehmende", "availability_from": "2026-08-03", "availability_to": "2026-10-09", "status": "zu_klären", "availability_note": "Pause mittendrin wegen Sardinien-Exkursion; genaue Daten offen.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Finn Fesq", "public_role": "Teilnehmende / Spezialbereich Tierknochen", "availability_from": null, "availability_to": null, "status": "zu_klären", "availability_note": "Angaben im Original uneinheitlich: 17.08.–29.08. sowie 05.–09.10. genannt.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Andreas Zauner", "public_role": "Technische Grabungsleitung", "availability_from": "2026-07-27", "availability_to": "2026-10-09", "status": "gesetzt", "availability_note": "Durchgehend eingeplant.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Niklas Mahler", "public_role": "Assistenz technische Grabungsleitung", "availability_from": "2026-07-27", "availability_to": "2026-10-09", "status": "gesetzt", "availability_note": "Durchgehend eingeplant.", "source_note": "Aus Teilnehmerübersicht übernommen."}, {"full_name": "Phil Föckersperger", "public_role": "Teilnehmende / angefragt", "availability_from": null, "availability_to": "2026-09-11", "status": "anzufragen", "availability_note": "Telefon wird angefragt; Startdatum in der Übersicht unklar.", "source_note": "Aus Teilnehmerübersicht übernommen."}], "participantPrivate": [{"full_name": "Yva Stamminger", "phone": "017318192921", "email": "y.stamminger@campus.lmu.de", "internal_note": ""}, {"full_name": "Mijana Terzic-Tanaskovic", "phone": "015129461434", "email": "Mij.Terzic@campus.lmu.de", "internal_note": ""}, {"full_name": "Verena Laubenbacher", "phone": "015754999316", "email": "V.Laubenbacher@campus.lmu.de", "internal_note": ""}, {"full_name": "Anton Bönisch", "phone": "015255928551", "email": "Anton.boenisch@gmx.de", "internal_note": ""}, {"full_name": "Rudolf Jürgens", "phone": "015259962848", "email": "Juergens.ru@campus.lmu.de", "internal_note": "Teilnahme noch nicht final bestätigt."}, {"full_name": "Marie Doetkotte", "phone": "015140118314", "email": "Ma.Doetkotte@campus.lmu.de", "internal_note": ""}, {"full_name": "Moritz Frimberger", "phone": "01783022646", "email": "Moritz.frimberger@t-online.de", "internal_note": ""}, {"full_name": "Jakob Redepenning", "phone": "017620009004", "email": "Jakob@Redepenning.com", "internal_note": "Option auf Verlängerung prüfen."}, {"full_name": "Alexander Voßberg", "phone": "015120534339", "email": "Alex.vossberg@posteo.de", "internal_note": ""}, {"full_name": "Claudia Heindl", "phone": "01743224706", "email": "Claudiaheindl753@gmail.com", "internal_note": ""}, {"full_name": "Clara Hausberg", "phone": "01701446818", "email": "clarahausberg@yahoo.de", "internal_note": ""}, {"full_name": "Jakob Hetesy", "phone": "016096462764", "email": "Jakob@hetesy.eu", "internal_note": "Pausenfenster nachtragen."}, {"full_name": "Finn Fesq", "phone": "01726777901", "email": "f.fesq@campus.lmu.de", "internal_note": "Genauen Einsatzplan klären."}, {"full_name": "Andreas Zauner", "phone": "015561547828", "email": "andreas-zauner@gmx.de", "internal_note": ""}, {"full_name": "Niklas Mahler", "phone": "015738137548", "email": "mahler1994niklas@web.de", "internal_note": ""}, {"full_name": "Phil Föckersperger", "phone": "wird angefragt", "email": "phil.foeckersperger@gmail.com", "internal_note": "Startdatum und Teilnahme final klären."}]};
-
+const seedData = { tasks: [], notes: [], participants: [] };
 const CATEGORY_META = {
   steuerung: { label: 'Steuerung', colorClass: 'steuerung' },
   personal: { label: 'Personal', colorClass: 'personal' },
@@ -56,6 +55,7 @@ const state = {
   participants: [],
   participantPrivate: [],
   profiles: [],
+  loadErrors: [],
   activeTab: 'dashboard',
   calendarOffset: 0
 };
@@ -213,23 +213,34 @@ async function signOut() {
 
 async function bootstrapApp() {
   if (!state.session) return showAuth();
-  setSyncState('Lade Daten …');
-  await loadProfile();
-  if (!state.profile) return showPending();
-  if (!state.profile.is_active && state.profile.role !== 'admin') {
-    setSyncState('Warte auf Freigabe');
-    return showPending();
+  try {
+    if (els.setupBanner) els.setupBanner.classList.add('hidden');
+    state.loadErrors = [];
+    setSyncState('Lade Daten …');
+    await loadProfile();
+    if (!state.profile) return showPending();
+    if (!state.profile.is_active && state.profile.role !== 'admin') {
+      setSyncState('Warte auf Freigabe');
+      return showPending();
+    }
+    await loadData();
+    renderAll();
+    showApp();
+    setSyncState(state.loadErrors.length ? 'Mit Hinweisen' : 'Synchronisiert');
+  } catch (error) {
+    console.error(error);
+    showSetupBanner(formatSetupError('Die App konnte nicht vollständig starten.', error));
+    setSyncState('Setup prüfen');
   }
-  await loadData();
-  renderAll();
-  showApp();
-  setSyncState('Synchronisiert');
 }
 
 async function loadProfile() {
   const { data, error } = await state.supabase.from('profiles').select('*').eq('id', state.session.user.id).single();
   state.profile = error ? null : data;
-  if (error) console.error(error);
+  if (error) {
+    console.error(error);
+    showSetupBanner(formatSetupError('Profil konnte nicht geladen werden. Prüfen Sie, ob supabase/schema.sql ausgeführt wurde und ob Ihr Konto freigeschaltet ist.', error));
+  }
 }
 
 async function loadData() {
@@ -242,7 +253,16 @@ async function loadData() {
     isManager ? state.supabase.from('participant_private').select('*') : Promise.resolve({ data: [], error: null }),
     isAdmin ? state.supabase.from('profiles').select('*').order('created_at', { ascending: true }) : Promise.resolve({ data: [], error: null })
   ]);
-  [tasksRes, notesRes, participantsRes, privateRes, profilesRes].forEach(r => { if (r.error) console.error(r.error); });
+  state.loadErrors = [];
+  [tasksRes, notesRes, participantsRes, privateRes, profilesRes].forEach((r, index) => {
+    if (r.error) {
+      console.error(r.error);
+      state.loadErrors.push(['Aufgaben','Notizen','Teilnehmende','Kontaktdaten','Profile'][index] + ': ' + r.error.message);
+    }
+  });
+  if (state.loadErrors.length) {
+    showSetupBanner('<strong>Setup-Hinweis:</strong> Einige Daten konnten nicht geladen werden. Bitte führen Sie <code>supabase/schema.sql</code> in Supabase aus und prüfen Sie danach die Freischaltung. <br><small>' + state.loadErrors.map(escapeHtml).join('<br>') + '</small>');
+  }
   state.tasks = tasksRes.data || [];
   state.notes = notesRes.data || [];
   state.participants = participantsRes.data || [];
@@ -639,33 +659,7 @@ function categorizeText(text) {
 
 async function seedProjectData() {
   if (!canManageProject()) return alert('Nur freigeschaltete Leitungsrollen dürfen die Grunddaten einspielen.');
-  if (!confirm('Grunddaten aus Chatverlauf und Teilnehmerdatei jetzt in Supabase anlegen? Vorhandene Daten bleiben erhalten.')) return;
-  setSyncState('Spiele Grunddaten ein …');
-
-  const taskCount = await state.supabase.from('tasks').select('id', { count:'exact', head:true });
-  if (!taskCount.error && taskCount.count === 0) {
-    await state.supabase.from('tasks').insert(seedData.tasks.map(item => ({ ...item, created_by: state.session.user.id })));
-  }
-  const noteCount = await state.supabase.from('notes').select('id', { count:'exact', head:true });
-  if (!noteCount.error && noteCount.count === 0) {
-    await state.supabase.from('notes').insert(seedData.notes.map(item => ({ ...item, created_by: state.session.user.id })));
-  }
-  const participantCount = await state.supabase.from('participants').select('id', { count:'exact', head:true });
-  if (!participantCount.error && participantCount.count === 0) {
-    const { data: inserted, error } = await state.supabase.from('participants').insert(seedData.participants.map(item => ({ ...item, created_by: state.session.user.id }))).select('id, full_name');
-    if (!error) {
-      const map = new Map(inserted.map(row => [row.full_name, row.id]));
-      const privateRows = seedData.participantPrivate.map(item => ({
-        participant_id: map.get(item.full_name),
-        phone: item.phone,
-        email: item.email,
-        internal_note: item.internal_note
-      })).filter(item => item.participant_id);
-      await state.supabase.from('participant_private').insert(privateRows);
-    }
-  }
-  await loadData(); renderAll(); setSyncState('Synchronisiert');
-  alert('Grunddaten wurden eingespielt oder waren bereits vorhanden.');
+  alert('Die Grunddaten werden jetzt über Supabase eingespielt. Öffnen Sie in Supabase den SQL Editor und führen Sie zuerst supabase/schema.sql und danach supabase/seed.sql aus. Danach hier auf "Daten neu laden" klicken.');
 }
 
 function exportBackup() {
@@ -710,6 +704,9 @@ function setTab(tab) {
 function canManageProject() { return ['admin','professor','technical_lead','assistant'].includes(state.profile?.role); }
 function canAdmin() { return state.profile?.role === 'admin'; }
 function setSyncState(text) { els.syncState.textContent = text; }
+function formatSetupError(message, error) {
+  return '<strong>Setup-Hinweis:</strong> ' + escapeHtml(message) + '<br><small>' + escapeHtml(error?.message || String(error || 'Unbekannter Fehler')) + '</small>';
+}
 function daysDiff(dateStr) {
   if (!dateStr) return 9999;
   const now = new Date(); now.setHours(0,0,0,0);
