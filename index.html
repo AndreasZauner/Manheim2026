@@ -6,7 +6,7 @@
   <title>Lehrgrabung Kerpen-Manheim 2026 – Online-Planer</title>
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./styles-fix.css" />
-  <script src="./config.js"></script>
+  <script src="./config.js?v=map-20260429-2"></script>
 </head>
 <body>
   <div id="setupBanner" class="setup-banner hidden"></div>
@@ -96,164 +96,32 @@
       <section id="dashboardTab" class="tab active">
         <div class="kpi-grid" id="kpiGrid"></div>
         <div class="dashboard-grid">
-          <section class="panel">
-            <div class="panel-head"><h3>Als Nächstes</h3><span class="muted">die nächsten 8 relevanten Aufgaben</span></div>
-            <div id="upcomingList" class="stack-list"></div>
-          </section>
-          <section class="panel">
-            <div class="panel-head"><h3>Ampel-Cockpit</h3><span class="muted">schneller Führungsüberblick</span></div>
-            <div id="cockpitGrid" class="cockpit-grid"></div>
-          </section>
-          <section class="panel">
-            <div class="panel-head"><h3>Rollenmodell</h3></div>
-            <div id="roleCards" class="role-grid"></div>
-          </section>
-          <section class="panel">
-            <div class="panel-head"><h3>Offene Personalpunkte</h3></div>
-            <div id="staffAlerts" class="stack-list"></div>
-          </section>
+          <section class="panel"><div class="panel-head"><h3>Als Nächstes</h3><span class="muted">die nächsten 8 relevanten Aufgaben</span></div><div id="upcomingList" class="stack-list"></div></section>
+          <section class="panel"><div class="panel-head"><h3>Ampel-Cockpit</h3><span class="muted">schneller Führungsüberblick</span></div><div id="cockpitGrid" class="cockpit-grid"></div></section>
+          <section class="panel"><div class="panel-head"><h3>Rollenmodell</h3></div><div id="roleCards" class="role-grid"></div></section>
+          <section class="panel"><div class="panel-head"><h3>Offene Personalpunkte</h3></div><div id="staffAlerts" class="stack-list"></div></section>
         </div>
       </section>
 
-      <section id="mindmapTab" class="tab">
-        <div class="section-head"><div><h3>Projektkarte / Mindmap</h3><p class="muted">Vorgefüllte Hauptäste aus diesem Chat, ergänzt durch zentrale Notizen aus der Cloud.</p></div></div>
-        <div id="mindmapGrid" class="mindmap-grid"></div>
-      </section>
+      <section id="mindmapTab" class="tab"><div class="section-head"><div><h3>Projektkarte / Mindmap</h3><p class="muted">Vorgefüllte Hauptäste aus diesem Chat, ergänzt durch zentrale Notizen aus der Cloud.</p></div></div><div id="mindmapGrid" class="mindmap-grid"></div></section>
 
       <section id="tasksTab" class="tab">
-        <div class="section-head">
-          <div><h3>Aufgaben und Timeline</h3><p class="muted">Hier liegen die zentralen To-dos für Leitung, Doku, Feldbetrieb und Logistik.</p></div>
-          <div class="filters">
-            <select id="taskCategoryFilter"></select>
-            <select id="taskStatusFilter"></select>
-          </div>
-        </div>
-        <div class="two-col">
-          <section class="panel">
-            <div class="panel-head"><h3>Neue Aufgabe</h3><span class="muted">mit automatischer Zuordnung</span></div>
-            <form id="taskForm" class="form-grid">
-              <label class="span-2">Titel<input type="text" name="title" required /></label>
-              <label>Kategorie<select name="category" id="taskFormCategory"></select></label>
-              <label>Unterpunkt<input type="text" name="subcategory" /></label>
-              <label>Fällig am<input type="date" name="due_date" /></label>
-              <label>Status<select name="status"><option value="offen">offen</option><option value="laufend">laufend</option><option value="erledigt">erledigt</option><option value="blockiert">blockiert</option></select></label>
-              <label>Priorität<select name="priority"><option value="hoch">hoch</option><option value="mittel" selected>mittel</option><option value="niedrig">niedrig</option></select></label>
-              <label>Zugewiesene Rolle<input type="text" name="assigned_role" placeholder="z. B. Technische Leitung" /></label>
-              <label class="span-2">Beschreibung<textarea name="description" rows="4"></textarea></label>
-              <div class="span-2 suggestion-box" id="taskSuggestionBox"></div>
-              <div class="span-2 button-row"><button class="btn primary" type="submit">Aufgabe speichern</button></div>
-            </form>
-          </section>
-          <section class="panel">
-            <div class="panel-head"><h3>Aufgabenliste</h3><span class="muted">zentral aus Supabase geladen</span></div>
-            <div id="taskList" class="stack-list"></div>
-          </section>
-        </div>
+        <div class="section-head"><div><h3>Aufgaben und Timeline</h3><p class="muted">Hier liegen die zentralen To-dos für Leitung, Doku, Feldbetrieb und Logistik.</p></div><div class="filters"><select id="taskCategoryFilter"></select><select id="taskStatusFilter"></select></div></div>
+        <div class="two-col"><section class="panel"><div class="panel-head"><h3>Neue Aufgabe</h3><span class="muted">mit automatischer Zuordnung</span></div><form id="taskForm" class="form-grid"><label class="span-2">Titel<input type="text" name="title" required /></label><label>Kategorie<select name="category" id="taskFormCategory"></select></label><label>Unterpunkt<input type="text" name="subcategory" /></label><label>Fällig am<input type="date" name="due_date" /></label><label>Status<select name="status"><option value="offen">offen</option><option value="laufend">laufend</option><option value="erledigt">erledigt</option><option value="blockiert">blockiert</option></select></label><label>Priorität<select name="priority"><option value="hoch">hoch</option><option value="mittel" selected>mittel</option><option value="niedrig">niedrig</option></select></label><label>Zugewiesene Rolle<input type="text" name="assigned_role" placeholder="z. B. Technische Leitung" /></label><label class="span-2">Beschreibung<textarea name="description" rows="4"></textarea></label><div class="span-2 suggestion-box" id="taskSuggestionBox"></div><div class="span-2 button-row"><button class="btn primary" type="submit">Aufgabe speichern</button></div></form></section><section class="panel"><div class="panel-head"><h3>Aufgabenliste</h3><span class="muted">zentral aus Supabase geladen</span></div><div id="taskList" class="stack-list"></div></section></div>
       </section>
 
-      <section id="calendarTab" class="tab">
-        <div class="section-head">
-          <div><h3>Kalender</h3><p class="muted">Monatsansicht auf Basis der Fälligkeitsdaten aus den Aufgaben.</p></div>
-          <div class="button-row"><button id="prevMonth" class="btn small">◀</button><div id="calendarLabel" class="calendar-label">–</div><button id="nextMonth" class="btn small">▶</button></div>
-        </div>
-        <div id="calendarGrid" class="calendar-grid"></div>
-      </section>
+      <section id="calendarTab" class="tab"><div class="section-head"><div><h3>Kalender</h3><p class="muted">Monatsansicht auf Basis der Fälligkeitsdaten aus den Aufgaben.</p></div><div class="button-row"><button id="prevMonth" class="btn small">◀</button><div id="calendarLabel" class="calendar-label">–</div><button id="nextMonth" class="btn small">▶</button></div></div><div id="calendarGrid" class="calendar-grid"></div></section>
 
-      <section id="participantsTab" class="tab">
-        <div class="section-head"><div><h3>Teilnehmende</h3><p class="muted">Kontaktdaten sind nur für freigeschaltete Leitungsrollen sichtbar.</p></div></div>
-        <div class="two-col">
-          <section class="panel" id="participantFormPanel">
-            <div class="panel-head"><h3>Person hinzufügen</h3><span class="muted">nur für Leitungsrollen</span></div>
-            <form id="participantForm" class="form-grid">
-              <label>Name<input type="text" name="full_name" required /></label>
-              <label>Rolle<input type="text" name="public_role" placeholder="Teilnehmende / Schnittleitung ..." /></label>
-              <label>Von<input type="date" name="availability_from" /></label>
-              <label>Bis<input type="date" name="availability_to" /></label>
-              <label>Status<select name="status"><option value="zugesagt">zugesagt</option><option value="gesetzt">gesetzt</option><option value="zu_klären">zu klären</option><option value="anzufragen">anzufragen</option></select></label>
-              <label>Telefon<input type="text" name="phone" /></label>
-              <label>E-Mail<input type="email" name="email" /></label>
-              <label class="span-2">Bemerkungen<textarea name="availability_note" rows="3"></textarea></label>
-              <label class="span-2">Interne Notiz<textarea name="internal_note" rows="3"></textarea></label>
-              <div class="span-2 button-row"><button class="btn primary" type="submit">Person speichern</button></div>
-            </form>
-          </section>
-          <section class="panel">
-            <div class="panel-head"><h3>Übersicht</h3><span class="muted">automatisch synchronisiert</span></div>
-            <div id="participantsSummary" class="summary-row"></div>
-            <div class="table-wrap"><table class="data-table"><thead id="participantsHead"></thead><tbody id="participantsBody"></tbody></table></div>
-          </section>
-        </div>
-      </section>
+      <section id="participantsTab" class="tab"><div class="section-head"><div><h3>Teilnehmende</h3><p class="muted">Kontaktdaten sind nur für freigeschaltete Leitungsrollen sichtbar.</p></div></div><div class="two-col"><section class="panel" id="participantFormPanel"><div class="panel-head"><h3>Person hinzufügen</h3><span class="muted">nur für Leitungsrollen</span></div><form id="participantForm" class="form-grid"><label>Name<input type="text" name="full_name" required /></label><label>Rolle<input type="text" name="public_role" placeholder="Teilnehmende / Schnittleitung ..." /></label><label>Von<input type="date" name="availability_from" /></label><label>Bis<input type="date" name="availability_to" /></label><label>Status<select name="status"><option value="zugesagt">zugesagt</option><option value="gesetzt">gesetzt</option><option value="zu_klären">zu klären</option><option value="anzufragen">anzufragen</option></select></label><label>Telefon<input type="text" name="phone" /></label><label>E-Mail<input type="email" name="email" /></label><label class="span-2">Bemerkungen<textarea name="availability_note" rows="3"></textarea></label><label class="span-2">Interne Notiz<textarea name="internal_note" rows="3"></textarea></label><div class="span-2 button-row"><button class="btn primary" type="submit">Person speichern</button></div></form></section><section class="panel"><div class="panel-head"><h3>Übersicht</h3><span class="muted">automatisch synchronisiert</span></div><div id="participantsSummary" class="summary-row"></div><div class="table-wrap"><table class="data-table"><thead id="participantsHead"></thead><tbody id="participantsBody"></tbody></table></div></section></div></section>
 
-      <section id="ideasTab" class="tab">
-        <div class="section-head"><div><h3>Ideen-Inbox</h3><p class="muted">Neue Stichpunkte werden automatisch einer Hauptkategorie und einem Unterpunkt zugeordnet.</p></div></div>
-        <div class="two-col">
-          <section class="panel">
-            <div class="panel-head"><h3>Neue Idee / Notiz</h3></div>
-            <form id="ideaForm" class="form-grid">
-              <label class="span-2">Titel<input type="text" name="title" required /></label>
-              <label>Kategorie<select name="category" id="ideaFormCategory"></select></label>
-              <label>Unterpunkt<input type="text" name="subcategory" /></label>
-              <label class="span-2">Text<textarea name="body" rows="6" required></textarea></label>
-              <div class="span-2 suggestion-box" id="ideaSuggestionBox"></div>
-              <div class="span-2 button-row"><button class="btn primary" type="submit">Idee speichern</button></div>
-            </form>
-          </section>
-          <section class="panel">
-            <div class="panel-head"><h3>Vorhandene Ideen und Notizen</h3></div>
-            <div id="ideaList" class="stack-list"></div>
-          </section>
-        </div>
-      </section>
+      <section id="ideasTab" class="tab"><div class="section-head"><div><h3>Ideen-Inbox</h3><p class="muted">Neue Stichpunkte werden automatisch einer Hauptkategorie und einem Unterpunkt zugeordnet.</p></div></div><div class="two-col"><section class="panel"><div class="panel-head"><h3>Neue Idee / Notiz</h3></div><form id="ideaForm" class="form-grid"><label class="span-2">Titel<input type="text" name="title" required /></label><label>Kategorie<select name="category" id="ideaFormCategory"></select></label><label>Unterpunkt<input type="text" name="subcategory" /></label><label class="span-2">Text<textarea name="body" rows="6" required></textarea></label><div class="span-2 suggestion-box" id="ideaSuggestionBox"></div><div class="span-2 button-row"><button class="btn primary" type="submit">Idee speichern</button></div></form></section><section class="panel"><div class="panel-head"><h3>Vorhandene Ideen und Notizen</h3></div><div id="ideaList" class="stack-list"></div></section></div></section>
 
-      <section id="adminTab" class="tab">
-        <div class="section-head"><div><h3>Adminbereich</h3><p class="muted">Rollen vergeben, Konten freischalten und Grunddaten verwalten.</p></div></div>
-        <div class="two-col">
-          <section class="panel">
-            <div class="panel-head"><h3>Benutzerverwaltung</h3><span class="muted">nur Admin</span></div>
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th><th>Aktion</th></tr></thead>
-                <tbody id="profilesBody"></tbody>
-              </table>
-            </div>
-          </section>
-          <section class="panel">
-            <div class="panel-head"><h3>Projektstatus</h3></div>
-            <div class="stack-list" id="adminInfoList"></div>
-          </section>
-        </div>
-      </section>
+      <section id="adminTab" class="tab"><div class="section-head"><div><h3>Adminbereich</h3><p class="muted">Rollen vergeben, Konten freischalten und Grunddaten verwalten.</p></div></div><div class="two-col"><section class="panel"><div class="panel-head"><h3>Benutzerverwaltung</h3><span class="muted">nur Admin</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th><th>Aktion</th></tr></thead><tbody id="profilesBody"></tbody></table></div></section><section class="panel"><div class="panel-head"><h3>Projektstatus</h3></div><div class="stack-list" id="adminInfoList"></div></section></div></section>
 
-      <section id="helpTab" class="tab">
-        <div class="section-head"><div><h3>Hilfe & Setup</h3><p class="muted">Kurz erklärt für die Nutzung auf verschiedenen Geräten und für die erste Veröffentlichung.</p></div></div>
-        <div class="two-col">
-          <section class="panel">
-            <div class="panel-head"><h3>So arbeiten Sie damit</h3></div>
-            <ol class="help-list">
-              <li>Die Website läuft online über Cloudflare Pages.</li>
-              <li>Alle Daten liegen zentral in Supabase – nicht mehr lokal nur in einer HTML-Datei.</li>
-              <li>Jede Person meldet sich mit eigenem Konto an.</li>
-              <li>Sie als Admin schalten Konten frei und vergeben Rollen.</li>
-              <li>Aufgaben, Ideen, Teilnehmende und Timeline werden für alle Geräte synchron gespeichert.</li>
-            </ol>
-          </section>
-          <section class="panel">
-            <div class="panel-head"><h3>Wichtige Dateien in diesem Paket</h3></div>
-            <ul class="help-list">
-              <li><code>index.html</code> – die eigentliche Web-App</li>
-              <li><code>styles.css</code> – Gestaltung</li>
-              <li><code>app.js</code> – Login, Datenlogik, Rollen, Kalender, Auto-Zuordnung</li>
-              <li><code>config.example.js</code> – Vorlage für Ihre Supabase-Zugangsdaten</li>
-              <li><code>supabase/schema.sql</code> – Datenbank und Rechte</li>
-              <li><code>supabase/seed.sql</code> – Startdaten aus diesem Chat und Ihrer Teilnehmerdatei</li>
-              <li><code>README.md</code> – Schritt-für-Schritt-Anleitung</li>
-            </ul>
-          </section>
-        </div>
-      </section>
+      <section id="helpTab" class="tab"><div class="section-head"><div><h3>Hilfe & Setup</h3><p class="muted">Kurz erklärt für die Nutzung auf verschiedenen Geräten und für die erste Veröffentlichung.</p></div></div><div class="two-col"><section class="panel"><div class="panel-head"><h3>So arbeiten Sie damit</h3></div><ol class="help-list"><li>Die Website läuft online über Cloudflare Pages.</li><li>Alle Daten liegen zentral in Supabase – nicht mehr lokal nur in einer HTML-Datei.</li><li>Jede Person meldet sich mit eigenem Konto an.</li><li>Sie als Admin schalten Konten frei und vergeben Rollen.</li><li>Aufgaben, Ideen, Teilnehmende und Timeline werden für alle Geräte synchron gespeichert.</li></ol></section><section class="panel"><div class="panel-head"><h3>Wichtige Dateien in diesem Paket</h3></div><ul class="help-list"><li><code>index.html</code> – die eigentliche Web-App</li><li><code>styles.css</code> – Gestaltung</li><li><code>app.js</code> – Login, Datenlogik, Rollen, Kalender, Auto-Zuordnung</li><li><code>config.example.js</code> – Vorlage für Ihre Supabase-Zugangsdaten</li><li><code>supabase/schema.sql</code> – Datenbank und Rechte</li><li><code>supabase/seed.sql</code> – Startdaten aus diesem Chat und Ihrer Teilnehmerdatei</li><li><code>README.md</code> – Schritt-für-Schritt-Anleitung</li></ul></section></div></section>
     </main>
   </div>
   <script type="module" src="./app.js"></script>
+  <script type="module" src="./map-module.js?v=map-20260429-2"></script>
 </body>
 </html>
