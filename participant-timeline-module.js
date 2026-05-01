@@ -33,6 +33,15 @@ async function installParticipantTimeline() {
   ensureUi();
   bindRefreshObserver();
   await loadParticipants();
+  scheduleParticipantPlanningModule();
+}
+
+function scheduleParticipantPlanningModule() {
+  window.setTimeout(() => {
+    if (window.__participantPlanningInstalled) return;
+    import('./participant-planning-module.js?v=planning-20260501-1')
+      .catch(error => console.error('Teilnehmerplanung konnte nicht geladen werden', error));
+  }, 600);
 }
 
 function injectStylesheet() {
@@ -107,7 +116,7 @@ function bindRefreshObserver() {
 async function loadParticipants() {
   const config = window.APP_CONFIG;
   if (!config?.SUPABASE_URL || !config?.SUPABASE_ANON_KEY) return;
-  state.client ||= createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+  state.client ||= window.getManheimSupabaseClient?.(createClient) || createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
   const { data: sessionData } = await state.client.auth.getSession();
@@ -261,11 +270,11 @@ function parseDate(value) {
 
 function formatDate(value) {
   const date = parseDate(value);
-  return date ? date.toLocaleDateString('de-DE') : '–';
+  return date ? date.toLocaleDateString('de-DE') : '-';
 }
 
 function prettyStatus(status) {
-  return ({ gesetzt: 'gesetzt', zugesagt: 'zugesagt', 'zu_klären': 'zu klären', anzufragen: 'anzufragen' })[status] || status || '–';
+  return ({ gesetzt: 'gesetzt', zugesagt: 'zugesagt', 'zu_klären': 'zu klären', anzufragen: 'anzufragen' })[status] || status || '-';
 }
 
 function clamp(value, min, max) {
