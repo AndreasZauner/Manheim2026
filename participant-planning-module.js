@@ -3,7 +3,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const PROJECT_START = new Date('2026-07-27T00:00:00');
 const PROJECT_END = new Date('2026-10-09T00:00:00');
 const MANAGER_ROLES = ['admin', 'professor', 'technical_lead', 'assistant'];
-const STATUS_ORDER = { gesetzt: 0, zugesagt: 1, 'zu_klären': 2, anzufragen: 3 };
+const STATUS_ORDER = { gesetzt: 0, zugesagt: 1, 'zu_kl\u00e4ren': 2, anzufragen: 3 };
 
 const state = {
   client: null,
@@ -103,7 +103,7 @@ async function refreshParticipantPlanning() {
 
 async function loadUser() {
   if (!state.client) return;
-  const { data: sessionData, error: sessionError } = await state.client.auth.getSession();
+  const { data: sessionData, error: sessionError } = await getAuthSession();
   if (sessionError) throw sessionError;
   state.userId = sessionData?.session?.user?.id || null;
   state.isManager = false;
@@ -134,8 +134,8 @@ function updatePageTitle() {
   const title = document.getElementById('pageTitle');
   const subtitle = document.getElementById('pageSubtitle');
   if (title && title.textContent !== 'Personal') title.textContent = 'Personal';
-  if (subtitle && subtitle.textContent !== 'Personaleinsatz, Zeiträume, Verbindlichkeit und Hinweise') {
-    subtitle.textContent = 'Personaleinsatz, Zeiträume, Verbindlichkeit und Hinweise';
+  if (subtitle && subtitle.textContent !== 'Personaleinsatz, Zeitr\u00e4ume, Verbindlichkeit und Hinweise') {
+    subtitle.textContent = 'Personaleinsatz, Zeitr\u00e4ume, Verbindlichkeit und Hinweise';
   }
 }
 
@@ -145,7 +145,7 @@ function ensurePlanningShell() {
   const sectionHead = tab.querySelector('.section-head');
   if (!sectionHead) return;
   sectionHead.querySelector('h3')?.replaceChildren(document.createTextNode('Personaleinsatz'));
-  sectionHead.querySelector('p')?.replaceChildren(document.createTextNode('Anwesenheit, Teilnehmendenliste und Einsatzzeiträume im Grabungszeitraum.'));
+  sectionHead.querySelector('p')?.replaceChildren(document.createTextNode('Anwesenheit, Teilnehmendenliste und Einsatzzeitr\u00e4ume im Grabungszeitraum.'));
 
   sectionHead.insertAdjacentHTML('afterend', `
     <div id="participantPlanningTabs" class="participant-planning-tabs" role="tablist" aria-label="Personal">
@@ -210,7 +210,7 @@ function renderDeployment() {
       <div>
         <div class="personnel-eyebrow">Personal</div>
         <h3>Personaleinsatz</h3>
-        <p>Zeiträume, Status und Hinweise im Überblick. Die Balken basieren auf den echten Supabase-Teilnehmerdaten.</p>
+        <p>Zeitr\u00e4ume, Status und Hinweise im \u00dcberblick. Die Balken basieren auf den echten Supabase-Teilnehmerdaten.</p>
       </div>
     </section>
     <div class="personnel-topbar">
@@ -221,14 +221,14 @@ function renderDeployment() {
           <option value="all" ${state.status === 'all' ? 'selected' : ''}>Alle Status</option>
           <option value="gesetzt" ${state.status === 'gesetzt' ? 'selected' : ''}>gesetzt</option>
           <option value="zugesagt" ${state.status === 'zugesagt' ? 'selected' : ''}>zugesagt</option>
-          <option value="zu_klären" ${state.status === 'zu_klären' ? 'selected' : ''}>zu klären</option>
+          <option value="zu_kl\u00e4ren" ${state.status === 'zu_kl\u00e4ren' ? 'selected' : ''}>zu kl\u00e4ren</option>
           <option value="anzufragen" ${state.status === 'anzufragen' ? 'selected' : ''}>anzufragen</option>
         </select>
         <select id="personnelSortBy" class="personnel-select">
           <option value="start" ${state.sort === 'start' ? 'selected' : ''}>Nach Startdatum</option>
           <option value="name" ${state.sort === 'name' ? 'selected' : ''}>Alphabetisch</option>
           <option value="status" ${state.sort === 'status' ? 'selected' : ''}>Nach Status</option>
-          <option value="problem" ${state.sort === 'problem' ? 'selected' : ''}>Klärungsbedarf zuerst</option>
+          <option value="problem" ${state.sort === 'problem' ? 'selected' : ''}>Kl\u00e4rungsbedarf zuerst</option>
         </select>
       </div>
     </div>
@@ -247,7 +247,7 @@ function renderDeployment() {
       <div class="personnel-legend">
         <span><i class="personnel-swatch green"></i>gesetzt</span>
         <span><i class="personnel-swatch blue"></i>zugesagt</span>
-        <span><i class="personnel-swatch orange"></i>zu klären</span>
+        <span><i class="personnel-swatch orange"></i>zu kl\u00e4ren</span>
         <span><i class="personnel-swatch gray"></i>anzufragen</span>
       </div>
     </section>
@@ -257,8 +257,8 @@ function renderDeployment() {
 
 function emptyMessage() {
   if (state.loading) return '<div class="personnel-empty">Personaleinsatz wird geladen ...</div>';
-  if (!state.userId) return '<div class="personnel-empty">Personaleinsatz lädt nach dem Login automatisch.</div>';
-  return '<div class="personnel-empty">Keine Personen für diese Auswahl gefunden.</div>';
+  if (!state.userId) return '<div class="personnel-empty">Personaleinsatz l\u00e4dt nach dem Login automatisch.</div>';
+  return '<div class="personnel-empty">Keine Personen f\u00fcr diese Auswahl gefunden.</div>';
 }
 
 function bindDeploymentUi() {
@@ -298,7 +298,7 @@ function comparePeopleByName(a, b) {
 function renderDeploymentRow(person) {
   const range = getRange(person);
   const privateData = privateFor(person.id);
-  const note = [person.availability_note, privateData.internal_note, person.source_note].filter(Boolean).join(' · ');
+  const note = [person.availability_note, privateData.internal_note, person.source_note].filter(Boolean).join(' \u00b7 ');
   const timeline = range.valid
     ? `<div class="personnel-timeline"><div class="personnel-bar ${barColor(person.status)}" style="left:${range.left}%;width:${range.width}%">${formatDate(person.availability_from)} - ${formatDate(person.availability_to)}</div></div>`
     : '<div class="personnel-unclear">Zeitraum unklar / uneinheitlich</div>';
@@ -312,7 +312,7 @@ function renderDeploymentRow(person) {
         <span class="personnel-role">${escapeHtml(person.public_role || 'Teilnehmende')}</span>
         <div class="personnel-meta">
           <span class="personnel-badge outline">${formatDate(person.availability_from)} ${person.availability_to ? '- ' + formatDate(person.availability_to) : ''}</span>
-          ${hasProblem(person) ? '<span class="personnel-badge warning">Klärungsbedarf</span>' : ''}
+          ${hasProblem(person) ? '<span class="personnel-badge warning">Kl\u00e4rungsbedarf</span>' : ''}
           ${state.isManager && privateData.email ? `<span class="personnel-badge outline">${escapeHtml(privateData.email)}</span>` : ''}
         </div>
       </div>
@@ -327,15 +327,15 @@ function renderDeploymentRow(person) {
 }
 
 function summaryCards(list) {
-  const finalConfirmed = list.filter(person => getRange(person).valid && !hasProblem(person) && !['anzufragen', 'zu_klären'].includes(person.status)).length;
-  const expandable = list.filter(person => /auch|evtl|eventuell|möglich|verlänger|zusatzwoche|flexibel|spätere termine/i.test(noteText(person))).length;
+  const finalConfirmed = list.filter(person => getRange(person).valid && !hasProblem(person) && !['anzufragen', 'zu_kl\u00e4ren'].includes(person.status)).length;
+  const expandable = list.filter(person => /auch|evtl|eventuell|m\u00f6glich|verl\u00e4nger|zusatzwoche|flexibel|sp\u00e4tere termine/i.test(noteText(person))).length;
   const clarificationNeeded = list.filter(hasProblem).length;
   const withNote = list.filter(person => Boolean(noteText(person))).length;
   return [
     ['Gesamt', list.length],
-    ['Final bestätigt', finalConfirmed],
+    ['Final best\u00e4tigt', finalConfirmed],
     ['Erweiterbar', expandable],
-    ['Klärungsbedarf', clarificationNeeded],
+    ['Kl\u00e4rungsbedarf', clarificationNeeded],
     ['Mit Anmerkung', withNote]
   ].map(([label, value]) => `<div class="personnel-stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
 }
@@ -352,10 +352,10 @@ function privateFor(participantId) {
 
 function hasProblem(person) {
   const text = [person.status, noteText(person)].filter(Boolean).join(' ').toLowerCase();
-  return person.status === 'zu_klären'
+  return person.status === 'zu_kl\u00e4ren'
     || person.status === 'anzufragen'
     || !getRange(person).valid
-    || /unklar|offen|anzufragen|final|klären|klaer|uneinheitlich|klärungsbedarf/.test(text);
+    || /unklar|offen|anzufragen|final|kl\u00e4ren|klaer|uneinheitlich|kl\u00e4rungsbedarf/.test(text);
 }
 
 function getRange(person) {
@@ -389,17 +389,17 @@ function formatDate(value) {
 }
 
 function prettyStatus(status) {
-  return ({ gesetzt: 'gesetzt', zugesagt: 'zugesagt', 'zu_klären': 'zu klären', anzufragen: 'anzufragen' })[status] || status || '-';
+  return ({ gesetzt: 'gesetzt', zugesagt: 'zugesagt', 'zu_kl\u00e4ren': 'zu kl\u00e4ren', anzufragen: 'anzufragen' })[status] || status || '-';
 }
 
 function statusClass(status) {
-  return status === 'zu_klären' ? 'status-zu-klaeren' : `status-${status || 'unknown'}`;
+  return status === 'zu_kl\u00e4ren' ? 'status-zu-klaeren' : `status-${status || 'unknown'}`;
 }
 
 function barColor(status) {
   if (status === 'gesetzt') return 'green';
   if (status === 'zugesagt') return 'blue';
-  if (status === 'zu_klären') return 'orange';
+  if (status === 'zu_kl\u00e4ren') return 'orange';
   return 'gray';
 }
 
@@ -415,6 +415,10 @@ function shorten(value, maxLength) {
 function renderDeploymentError(message) {
   const host = document.getElementById('personnelDeploymentView');
   if (host) host.innerHTML = `<div class="empty">Personaleinsatz konnte nicht geladen werden: ${escapeHtml(message)}</div>`;
+}
+
+function getAuthSession() {
+  return window.getManheimAuthSession?.(state.client) || state.client.auth.getSession();
 }
 
 function escapeHtml(value) {
