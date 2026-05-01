@@ -11,12 +11,12 @@ async function installParticipantBootstrap() {
     const imports = [];
     if (!window.__participantPlanningInstalled) {
       imports.push(
-        import('./participant-planning-module.js?v=planning-20260501-3')
+        import('./participant-planning-module.js?v=authlock-20260501-1')
           .catch(error => console.error('Teilnehmerplanung konnte nicht geladen werden', error))
       );
     }
     imports.push(
-      import('./v21-phase12-module.js?v=v21-phase12-2')
+      import('./v21-phase12-module.js?v=authlock-20260501-1')
         .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
     );
     await Promise.allSettled(imports);
