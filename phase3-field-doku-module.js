@@ -2,6 +2,14 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const FIELD_CATEGORIES = new Set(['dokumentation', 'schnitte', 'funde', 'sicherheit', 'schnittstelle_amt']);
 const FIELD_STATUS_OPEN = new Set(['offen', 'laufend', 'blockiert', 'aktiv']);
+const NAV = {
+  dashboard: ['Leitstand', 'Tageslage, Prioritaeten, Klaerungsbedarf und Risiken'],
+  participants: ['Personal', 'Personaleinsatz, Zeitraeume, Verbindlichkeit und Hinweise'],
+  mindmap: ['Feld & Doku', 'Kartenviewer, Feldstruktur, Dokumentationshinweise und Fortschritt'],
+  tasks: ['Infrastruktur', 'Ressourcen, Logistik und operative Aufgaben'],
+  ideas: ['Finanzen', 'Beschaffung, offene Kostenpunkte und vorgemerkte Hinweise'],
+  admin: ['Verwaltung', 'Rollen, Freischaltungen und Systemeinstellungen']
+};
 
 const state = {
   client: null,
@@ -20,12 +28,15 @@ function installPhase3FieldDoku() {
   if (state.installed) return;
   state.installed = true;
   injectStylesheet();
+  normalizeV21Shell();
   hideStandaloneMapNav();
   installMapNavObserver();
   ensureFieldDokuShell();
   bindFieldDokuUi();
   loadFieldDokuData();
+  installShellStabilizer();
   window.setTimeout(() => {
+    normalizeV21Shell();
     hideStandaloneMapNav();
     ensureFieldDokuShell();
   }, 800);
@@ -101,6 +112,38 @@ function bindFieldDokuUi() {
   document.getElementById('refreshButton')?.addEventListener('click', () => {
     window.setTimeout(loadFieldDokuData, 900);
   });
+}
+
+function installShellStabilizer() {
+  let count = 0;
+  const timer = window.setInterval(() => {
+    count += 1;
+    normalizeV21Shell();
+    hideStandaloneMapNav();
+    if (count > 20) window.clearInterval(timer);
+  }, 250);
+}
+
+function normalizeV21Shell() {
+  document.querySelectorAll('.nav-btn[data-tab]').forEach(button => {
+    const meta = NAV[button.dataset.tab];
+    if (!meta) {
+      button.classList.add('hidden');
+      return;
+    }
+    button.classList.remove('hidden');
+    if (button.textContent !== meta[0]) button.textContent = meta[0];
+    if (button.dataset.phase3NavBound !== 'true') {
+      button.dataset.phase3NavBound = 'true';
+      button.addEventListener('click', () => window.setTimeout(normalizeV21Shell, 30));
+    }
+  });
+  const active = document.querySelector('.nav-btn.active[data-tab]')?.dataset.tab;
+  const meta = NAV[active];
+  const title = document.getElementById('pageTitle');
+  const subtitle = document.getElementById('pageSubtitle');
+  if (meta && title && title.textContent !== meta[0]) title.textContent = meta[0];
+  if (meta && subtitle && subtitle.textContent !== meta[1]) subtitle.textContent = meta[1];
 }
 
 async function loadFieldDokuData() {
