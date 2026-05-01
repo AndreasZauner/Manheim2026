@@ -33,13 +33,39 @@ function installPhase3FieldDoku() {
   installMapNavObserver();
   ensureFieldDokuShell();
   bindFieldDokuUi();
-  loadFieldDokuData();
+  installMainDataBridge();
   installShellStabilizer();
   window.setTimeout(() => {
     normalizeV21Shell();
     hideStandaloneMapNav();
     ensureFieldDokuShell();
   }, 800);
+}
+
+function installMainDataBridge() {
+  window.addEventListener('manheim:data-ready', event => {
+    ensureFieldDokuShell();
+    state.tasks = event.detail?.tasks || [];
+    state.notes = event.detail?.notes || [];
+    renderFieldDoku();
+    const sync = document.getElementById('fieldDokuSync');
+    if (sync) sync.textContent = 'synchronisiert';
+  });
+
+  if (!document.getElementById('app')?.classList.contains('hidden')) {
+    window.setTimeout(loadFieldDokuData, 0);
+    return;
+  }
+
+  let checks = 0;
+  const timer = window.setInterval(() => {
+    checks += 1;
+    if (!document.getElementById('app')?.classList.contains('hidden')) {
+      window.clearInterval(timer);
+      window.setTimeout(loadFieldDokuData, 250);
+    }
+    if (checks > 80) window.clearInterval(timer);
+  }, 250);
 }
 
 function injectStylesheet() {
