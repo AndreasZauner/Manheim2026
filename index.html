@@ -62,14 +62,14 @@
         <div class="user-role" id="sidebarUserRole">–</div>
       </div>
       <nav class="nav">
-        <button class="nav-btn active" data-tab="dashboard">Übersicht</button>
-        <button class="nav-btn" data-tab="mindmap">Projektkarte</button>
-        <button class="nav-btn" data-tab="tasks">Aufgaben & Timeline</button>
-        <button class="nav-btn" data-tab="calendar">Kalender</button>
-        <button class="nav-btn" data-tab="participants">Teilnehmende</button>
-        <button class="nav-btn" data-tab="ideas">Ideen-Inbox</button>
-        <button class="nav-btn" data-tab="admin" id="adminTabButton">Admin</button>
-        <button class="nav-btn" data-tab="help">Hilfe & Setup</button>
+        <button class="nav-btn active" data-tab="dashboard">Leitstand</button>
+        <button class="nav-btn" data-tab="participants">Personal</button>
+        <button class="nav-btn" data-tab="mindmap">Feld & Doku</button>
+        <button class="nav-btn" data-tab="tasks">Infrastruktur</button>
+        <button class="nav-btn" data-tab="ideas">Finanzen</button>
+        <button class="nav-btn" data-tab="admin" id="adminTabButton">Verwaltung</button>
+        <button class="nav-btn hidden" data-tab="calendar">Kalender</button>
+        <button class="nav-btn hidden" data-tab="help">Hilfe & Setup</button>
       </nav>
       <div class="sidebar-meta">
         <span class="chip">Haus: Kerpen-Buir</span>
@@ -86,8 +86,8 @@
     <main class="main">
       <header class="topbar">
         <div>
-          <h2 id="pageTitle">Übersicht</h2>
-          <p id="pageSubtitle">Zentral synchronisierte Arbeitsoberfläche mit Rollen und Freigaben.</p>
+          <h2 id="pageTitle">Leitstand</h2>
+          <p id="pageSubtitle">Tageslage, Prioritäten, Klärungsbedarf und Risiken.</p>
         </div>
         <div class="topbar-right">
           <div class="sync-state" id="syncState">Synchronisiert</div>
@@ -124,5 +124,6 @@
   </div>
   <script type="module" src="./app.js"></script>
   <script type="module" src="./map-module.js?v=map-20260429-2"></script>
+  <script type="module" src="./phase3-field-doku-module.js?v=phase3-20260501-1"></script>
 </body>
 </html>
