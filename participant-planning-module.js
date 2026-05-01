@@ -14,7 +14,9 @@ const state = {
   privateRows: [],
   search: '',
   status: 'all',
-  sort: 'start'
+  sort: 'start',
+  loading: false,
+  authListenerBound: false
 };
 
 if (document.readyState === 'loading') {
@@ -23,23 +25,26 @@ if (document.readyState === 'loading') {
   installParticipantPlanning();
 }
 
-async function installParticipantPlanning() {
+function installParticipantPlanning() {
   if (window.__participantPlanningInstalled) return;
   window.__participantPlanningInstalled = true;
   injectStylesheet();
   setupSupabase();
+  bindAuthStateListener();
   renameNavigation();
   ensurePlanningShell();
-  await loadUser();
-  await loadData();
   renderDeployment();
+  installReadinessWatcher();
+  document.getElementById('refreshButton')?.addEventListener('click', () => {
+    window.setTimeout(refreshParticipantPlanning, 700);
+  });
 }
 
 function injectStylesheet() {
   if (document.querySelector('link[href^="./participant-planning-module.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = './participant-planning-module.css?v=planning-20260501-2';
+  link.href = './participant-planning-module.css?v=planning-20260501-3';
   document.head.appendChild(link);
 }
 
@@ -51,25 +56,73 @@ function setupSupabase() {
   });
 }
 
+function bindAuthStateListener() {
+  if (!state.client || state.authListenerBound) return;
+  state.authListenerBound = true;
+  state.client.auth.onAuthStateChange(event => {
+    if (event === 'SIGNED_OUT') {
+      state.userId = null;
+      state.isManager = false;
+      state.participants = [];
+      state.privateRows = [];
+      renderDeployment();
+      return;
+    }
+    if (['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED', 'INITIAL_SESSION'].includes(event)) {
+      window.setTimeout(refreshParticipantPlanning, 700);
+    }
+  });
+}
+
+function installReadinessWatcher() {
+  let checks = 0;
+  const timer = window.setInterval(() => {
+    checks += 1;
+    const appVisible = !document.getElementById('app')?.classList.contains('hidden');
+    if (appVisible && !state.userId && !state.loading) refreshParticipantPlanning();
+    if (state.userId || checks > 80) window.clearInterval(timer);
+  }, 250);
+}
+
+async function refreshParticipantPlanning() {
+  const appVisible = !document.getElementById('app')?.classList.contains('hidden');
+  if (!appVisible || state.loading) return;
+  state.loading = true;
+  try {
+    ensurePlanningShell();
+    await loadUser();
+    await loadData();
+    renderDeployment();
+  } catch (error) {
+    console.error(error);
+    renderDeploymentError(error?.message || String(error));
+  } finally {
+    state.loading = false;
+  }
+}
+
 async function loadUser() {
   if (!state.client) return;
-  const { data: sessionData } = await state.client.auth.getSession();
+  const { data: sessionData, error: sessionError } = await state.client.auth.getSession();
+  if (sessionError) throw sessionError;
   state.userId = sessionData?.session?.user?.id || null;
+  state.isManager = false;
   if (!state.userId) return;
-  const { data } = await state.client.from('profiles').select('role,is_active').eq('id', state.userId).single();
+
+  const { data, error } = await state.client.from('profiles').select('role,is_active').eq('id', state.userId).single();
+  if (error) throw error;
   state.isManager = Boolean(data?.is_active) && MANAGER_ROLES.includes(data?.role);
 }
 
 function renameNavigation() {
   const button = document.querySelector('.nav-btn[data-tab="participants"]');
-  if (button && button.textContent !== 'Teilnehmerplanung') {
-    button.textContent = 'Teilnehmerplanung';
-  }
+  if (button && button.textContent !== 'Personal') button.textContent = 'Personal';
   if (button && button.dataset.participantPlanningClickBound !== 'true') {
     button.dataset.participantPlanningClickBound = 'true';
     button.addEventListener('click', () => window.setTimeout(() => {
       renameNavigation();
       updatePageTitle();
+      refreshParticipantPlanning();
     }, 30));
   }
   updatePageTitle();
@@ -80,9 +133,9 @@ function updatePageTitle() {
   if (!active) return;
   const title = document.getElementById('pageTitle');
   const subtitle = document.getElementById('pageSubtitle');
-  if (title && title.textContent !== 'Teilnehmerplanung') title.textContent = 'Teilnehmerplanung';
-  if (subtitle && subtitle.textContent !== 'Anwesenheit, Verfügbarkeiten und Personaleinsatz') {
-    subtitle.textContent = 'Anwesenheit, Verfügbarkeiten und Personaleinsatz';
+  if (title && title.textContent !== 'Personal') title.textContent = 'Personal';
+  if (subtitle && subtitle.textContent !== 'Personaleinsatz, Zeiträume, Verbindlichkeit und Hinweise') {
+    subtitle.textContent = 'Personaleinsatz, Zeiträume, Verbindlichkeit und Hinweise';
   }
 }
 
@@ -91,11 +144,11 @@ function ensurePlanningShell() {
   if (!tab || document.getElementById('participantPlanningTabs')) return;
   const sectionHead = tab.querySelector('.section-head');
   if (!sectionHead) return;
-  sectionHead.querySelector('h3')?.replaceChildren(document.createTextNode('Teilnehmerplanung'));
-  sectionHead.querySelector('p')?.replaceChildren(document.createTextNode('Anwesenheit, Teilnehmendenliste und Personaleinsatz im Grabungszeitraum.'));
+  sectionHead.querySelector('h3')?.replaceChildren(document.createTextNode('Personaleinsatz'));
+  sectionHead.querySelector('p')?.replaceChildren(document.createTextNode('Anwesenheit, Teilnehmendenliste und Einsatzzeiträume im Grabungszeitraum.'));
 
   sectionHead.insertAdjacentHTML('afterend', `
-    <div id="participantPlanningTabs" class="participant-planning-tabs" role="tablist" aria-label="Teilnehmerplanung">
+    <div id="participantPlanningTabs" class="participant-planning-tabs" role="tablist" aria-label="Personal">
       <button type="button" class="btn small participant-planning-tab active" data-planning-tab="presence">Anwesenheit & Liste</button>
       <button type="button" class="btn small participant-planning-tab" data-planning-tab="deployment">Personaleinsatz</button>
     </div>
@@ -114,6 +167,7 @@ function ensurePlanningShell() {
     button.addEventListener('click', () => {
       state.activeSubtab = button.dataset.planningTab;
       syncSubtabs();
+      if (state.activeSubtab === 'deployment') refreshParticipantPlanning();
     });
   });
   syncSubtabs();
@@ -140,12 +194,11 @@ async function loadData() {
       ? state.client.from('participant_private').select('participant_id,phone,email,internal_note')
       : Promise.resolve({ data: [], error: null })
   ]);
-  if (participantsResult.error) {
-    renderDeploymentError(participantsResult.error.message);
-    return;
-  }
+
+  if (participantsResult.error) throw participantsResult.error;
+  if (privateResult.error) throw privateResult.error;
   state.participants = participantsResult.data || [];
-  state.privateRows = privateResult.data || [];
+  state.privateRows = state.isManager ? privateResult.data || [] : [];
 }
 
 function renderDeployment() {
@@ -155,7 +208,7 @@ function renderDeployment() {
   host.innerHTML = `
     <section class="personnel-hero">
       <div>
-        <div class="personnel-eyebrow">Teilnehmerplanung</div>
+        <div class="personnel-eyebrow">Personal</div>
         <h3>Personaleinsatz</h3>
         <p>Zeiträume, Status und Hinweise im Überblick. Die Balken basieren auf den echten Supabase-Teilnehmerdaten.</p>
       </div>
@@ -190,7 +243,7 @@ function renderDeployment() {
           <p>Der farbige Balken zeigt den jeweils geplanten Teilnahmezeitraum.</p>
         </div>
       </div>
-      <div class="personnel-rows">${list.length ? list.map(renderDeploymentRow).join('') : '<div class="personnel-empty">Keine Personen für diese Auswahl gefunden.</div>'}</div>
+      <div class="personnel-rows">${list.length ? list.map(renderDeploymentRow).join('') : emptyMessage()}</div>
       <div class="personnel-legend">
         <span><i class="personnel-swatch green"></i>gesetzt</span>
         <span><i class="personnel-swatch blue"></i>zugesagt</span>
@@ -200,6 +253,12 @@ function renderDeployment() {
     </section>
   `;
   bindDeploymentUi();
+}
+
+function emptyMessage() {
+  if (state.loading) return '<div class="personnel-empty">Personaleinsatz wird geladen ...</div>';
+  if (!state.userId) return '<div class="personnel-empty">Personaleinsatz lädt nach dem Login automatisch.</div>';
+  return '<div class="personnel-empty">Keine Personen für diese Auswahl gefunden.</div>';
 }
 
 function bindDeploymentUi() {
@@ -226,7 +285,7 @@ function getFilteredParticipants() {
 }
 
 function comparePeople(a, b) {
-  if (state.sort === 'name') return String(a.full_name || '').localeCompare(String(b.full_name || ''), 'de');
+  if (state.sort === 'name') return comparePeopleByName(a, b);
   if (state.sort === 'status') return (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99) || comparePeopleByName(a, b);
   if (state.sort === 'problem') return Number(hasProblem(b)) - Number(hasProblem(a)) || compareDates(a.availability_from, b.availability_from);
   return compareDates(a.availability_from, b.availability_from) || comparePeopleByName(a, b);
@@ -254,7 +313,7 @@ function renderDeploymentRow(person) {
         <div class="personnel-meta">
           <span class="personnel-badge outline">${formatDate(person.availability_from)} ${person.availability_to ? '- ' + formatDate(person.availability_to) : ''}</span>
           ${hasProblem(person) ? '<span class="personnel-badge warning">Klärungsbedarf</span>' : ''}
-          ${privateData.email ? `<span class="personnel-badge outline">${escapeHtml(privateData.email)}</span>` : ''}
+          ${state.isManager && privateData.email ? `<span class="personnel-badge outline">${escapeHtml(privateData.email)}</span>` : ''}
         </div>
       </div>
       <div class="personnel-timeline-cell">
@@ -269,9 +328,9 @@ function renderDeploymentRow(person) {
 
 function summaryCards(list) {
   const finalConfirmed = list.filter(person => getRange(person).valid && !hasProblem(person) && !['anzufragen', 'zu_klären'].includes(person.status)).length;
-  const expandable = list.filter(person => /auch|evtl|eventuell|möglich|verlänger|zusatzwoche|flexibel|spätere termine/i.test([person.availability_note, person.source_note, privateFor(person.id).internal_note].filter(Boolean).join(' '))).length;
+  const expandable = list.filter(person => /auch|evtl|eventuell|möglich|verlänger|zusatzwoche|flexibel|spätere termine/i.test(noteText(person))).length;
   const clarificationNeeded = list.filter(hasProblem).length;
-  const withNote = list.filter(person => Boolean(person.availability_note || person.source_note || privateFor(person.id).internal_note)).length;
+  const withNote = list.filter(person => Boolean(noteText(person))).length;
   return [
     ['Gesamt', list.length],
     ['Final bestätigt', finalConfirmed],
@@ -281,12 +340,18 @@ function summaryCards(list) {
   ].map(([label, value]) => `<div class="personnel-stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
 }
 
+function noteText(person) {
+  const privateData = privateFor(person.id);
+  return [person.availability_note, person.source_note, privateData.internal_note].filter(Boolean).join(' ');
+}
+
 function privateFor(participantId) {
+  if (!state.isManager) return {};
   return state.privateRows.find(row => Number(row.participant_id) === Number(participantId)) || {};
 }
 
 function hasProblem(person) {
-  const text = [person.status, person.availability_note, person.source_note, privateFor(person.id).internal_note].filter(Boolean).join(' ').toLowerCase();
+  const text = [person.status, noteText(person)].filter(Boolean).join(' ').toLowerCase();
   return person.status === 'zu_klären'
     || person.status === 'anzufragen'
     || !getRange(person).valid
