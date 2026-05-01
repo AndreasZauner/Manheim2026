@@ -35,7 +35,7 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
     if (document.querySelector('script[src^="./map-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './map-module.js?v=map-20260429-2';
+    script.src = './map-module.js?v=cleanup-20260501-1';
     document.head.appendChild(script);
   }
 
@@ -43,7 +43,7 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
     if (document.querySelector('script[src^="./attendance-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './attendance-module.js?v=attendance-20260429-1';
+    script.src = './attendance-module.js?v=cleanup-20260501-1';
     document.head.appendChild(script);
   }
 
@@ -51,7 +51,7 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
     if (document.querySelector('script[src^="./participant-timeline-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './participant-timeline-module.js?v=timeline-20260429-1';
+    script.src = './participant-timeline-module.js?v=cleanup-20260501-1';
     document.head.appendChild(script);
   }
 
@@ -59,7 +59,7 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
     if (!document.querySelector('link[href="./auth-login.css"]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
-      link.href = './auth-login.css?v=auth-20260429-1';
+      link.href = './auth-login.css?v=cleanup-20260501-1';
       document.head.appendChild(link);
     }
 
@@ -226,12 +226,12 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
     const rules = [
       [gisWords, 'dokumentation', 'GIS / Kartenviewer'],
       [['befund','profil','planum','foto','sfm','dokumentation','nummer','fundliste','qc'], 'dokumentation', 'Qualitaetskontrolle'],
-      [['schnitt','schnittleiter','antoniterhof','hofkapelle','marktplatz','villa','grabenstruktur','flaeche','fl\u00e4che'], 'schnitte', 'Feldorganisation'],
-      [['teilnehmer','studierende','personal','zusage','verfuegbarkeit','verf\u00fcgbarkeit','onboarding','schicht'], 'personal', 'Teilnehmendenmanagement'],
-      [['buero','b\u00fcro','haus','transport','fahrzeug','lager','material','warnweste','unterkunft'], 'logistik', 'Infrastruktur'],
+      [['schnitt','schnittleiter','antoniterhof','hofkapelle','marktplatz','villa','grabenstruktur','flaeche','fläche'], 'schnitte', 'Feldorganisation'],
+      [['teilnehmer','studierende','personal','zusage','verfuegbarkeit','verfügbarkeit','onboarding','schicht'], 'personal', 'Teilnehmendenmanagement'],
+      [['buero','büro','haus','transport','fahrzeug','lager','material','warnweste','unterkunft'], 'logistik', 'Infrastruktur'],
       [['fund','probe','tierknochen','reinigung','datenbank'], 'funde', 'Fundbearbeitung'],
       [['notfall','erste hilfe','hitze','sicherheit','wetter','unfall'], 'sicherheit', 'Notfall'],
-      [['landesamt','amt','professor','auflage','rueckmeldung','r\u00fcckmeldung'], 'schnittstelle_amt', 'Professor als Schnittstelle']
+      [['landesamt','amt','professor','auflage','rueckmeldung','rückmeldung'], 'schnittstelle_amt', 'Professor als Schnittstelle']
     ];
     const hit = rules.find(([keys]) => keys.some(key => t.includes(key)));
     return hit ? { category: hit[1], subcategory: hit[2] } : defaultSuggestion;
