@@ -1,0 +1,32 @@
+.v21-hidden-nav {
+  display: none !important;
+}
+
+.v21-leitstand-intro {
+  margin-bottom: 16px;
+}
+
+.v21-phase-grid {
+  align-items: stretch;
+}
+
+.v21-phase-card {
+  gap: 8px;
+}
+
+.v21-phase-date {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: #edf5ff;
+  color: #285f9b;
+  padding: 5px 9px;
+  font-size: .75rem;
+  font-weight: 900;
+}
+
+.personnel-badge.special {
+  background: #edf7f4;
+  border: 1px solid #b9dfd2;
+  color: #28725b;
+}

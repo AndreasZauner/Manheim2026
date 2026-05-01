@@ -1,15 +1,24 @@
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', installParticipantPlanningBootstrap);
+  document.addEventListener('DOMContentLoaded', installParticipantBootstrap);
 } else {
-  installParticipantPlanningBootstrap();
+  installParticipantBootstrap();
 }
 
-function installParticipantPlanningBootstrap() {
-  if (window.__participantPlanningBootstrapInstalled) return;
-  window.__participantPlanningBootstrapInstalled = true;
-  window.setTimeout(() => {
-    if (window.__participantPlanningInstalled) return;
-    import('./participant-planning-module.js?v=planning-20260501-2')
-      .catch(error => console.error('Teilnehmerplanung konnte nicht geladen werden', error));
+async function installParticipantBootstrap() {
+  if (window.__participantBootstrapInstalled) return;
+  window.__participantBootstrapInstalled = true;
+  window.setTimeout(async () => {
+    const imports = [];
+    if (!window.__participantPlanningInstalled) {
+      imports.push(
+        import('./participant-planning-module.js?v=planning-20260501-2')
+          .catch(error => console.error('Teilnehmerplanung konnte nicht geladen werden', error))
+      );
+    }
+    imports.push(
+      import('./v21-phase12-module.js?v=v21-phase12-1')
+        .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
+    );
+    await Promise.allSettled(imports);
   }, 500);
 }
