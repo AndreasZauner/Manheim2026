@@ -19,6 +19,7 @@ const state = {
   client: null,
   userId: null,
   isManager: false,
+  authListenerBound: false,
   checks: 0
 };
 
@@ -33,6 +34,7 @@ async function installV21Phase12() {
   window.__v21Phase12Installed = true;
   injectStylesheet();
   setupSupabase();
+  bindAuthStateListener();
   await loadUser();
   applyV21Shell();
   installShortStabilizer();
@@ -55,17 +57,46 @@ function setupSupabase() {
 }
 
 async function loadUser() {
-  if (!state.client) return;
+  if (!state.client) {
+    state.userId = null;
+    state.isManager = false;
+    return;
+  }
   const { data: sessionData } = await state.client.auth.getSession();
   state.userId = sessionData?.session?.user?.id || null;
-  if (!state.userId) return;
-  const { data } = await state.client.from('profiles').select('role,is_active').eq('id', state.userId).single();
+  if (!state.userId) {
+    state.isManager = false;
+    return;
+  }
+  const { data, error } = await state.client.from('profiles').select('role,is_active').eq('id', state.userId).single();
+  if (error) {
+    state.isManager = false;
+    return;
+  }
   state.isManager = Boolean(data?.is_active) && MANAGER_ROLES.includes(data?.role);
 }
 
+function bindAuthStateListener() {
+  if (!state.client || state.authListenerBound) return;
+  state.authListenerBound = true;
+  state.client.auth.onAuthStateChange(async event => {
+    if (event === 'SIGNED_OUT') {
+      state.userId = null;
+      state.isManager = false;
+      applyV21Shell();
+      return;
+    }
+    if (['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED', 'INITIAL_SESSION'].includes(event)) {
+      await loadUser();
+      applyV21Shell();
+    }
+  });
+}
+
 function installShortStabilizer() {
-  const timer = window.setInterval(() => {
+  const timer = window.setInterval(async () => {
     state.checks += 1;
+    if (!state.userId) await loadUser();
     applyV21Shell();
     if (state.checks > 16) window.clearInterval(timer);
   }, 500);
@@ -124,16 +155,16 @@ function enhanceLeitstand() {
   setPanelTitle('staffAlerts', '1.3 Offene Punkte / Klärungsbedarf', 'Personal, Aufgaben und Notizen mit Nachsteuerungsbedarf');
   setPanelTitle('cockpitGrid', '1.5 Risiken / Ampel-Cockpit', 'schneller Führungsüberblick');
   const roleCards = document.getElementById('roleCards');
-  if (roleCards && roleCards.dataset.v21PhaseOverview !== 'true') {
+  const hasPhaseOverview = roleCards?.querySelector('[data-v21-phase-overview-panel="true"]');
+  if (roleCards && !hasPhaseOverview) {
     setPanelTitle('roleCards', '1.4 Termin- und Phasenüberblick', 'Grabungszeitraum und Arbeitsphasen');
-    roleCards.dataset.v21PhaseOverview = 'true';
     roleCards.classList.add('v21-phase-grid');
     roleCards.innerHTML = [
       ['Vorbereitung', 'bis 26.07.2026', 'Personal, Logistik, Infrastruktur, Rollen und Datenlage klären.'],
       ['Feldphase', '27.07.–09.10.2026', 'Tagessteuerung, Dokumentation, Sicherheit und Prioritäten verfolgen.'],
       ['Nachbereitung', 'ab 10.10.2026', 'Abschlussdokumentation, offene Punkte und Auswertung bündeln.']
     ].map(([title, date, text]) => `
-      <div class="role-card v21-phase-card">
+      <div class="role-card v21-phase-card" data-v21-phase-overview-panel="true">
         <strong>${title}</strong>
         <span class="v21-phase-date">${date}</span>
         <span class="muted">${text}</span>
@@ -172,6 +203,9 @@ function enhancePersonal() {
     head.querySelector('.muted, p')?.replaceChildren(document.createTextNode('Zeiträume, Verbindlichkeit, Hinweise, Kontaktfreigaben und Sonderfunktionen.'));
   }
   const controls = document.querySelector('.personnel-controls');
+  if (!state.isManager) {
+    document.getElementById('openV21PersonDrawer')?.remove();
+  }
   if (controls && state.isManager && !document.getElementById('openV21PersonDrawer')) {
     controls.insertAdjacentHTML('beforeend', '<button class="btn primary" type="button" id="openV21PersonDrawer">Neue Person</button>');
     document.getElementById('openV21PersonDrawer')?.addEventListener('click', openDrawer);
@@ -232,6 +266,10 @@ function closeDrawer() {
 
 async function savePerson(event) {
   event.preventDefault();
+  if (!state.userId || !state.isManager) {
+    await loadUser();
+    applyV21Shell();
+  }
   if (!state.client || !state.userId || !state.isManager) return;
   const form = new FormData(event.currentTarget);
   const special = String(form.get('special_function') || '').trim();
