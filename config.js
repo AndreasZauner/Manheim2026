@@ -15,6 +15,34 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
   return window.__manheimSupabaseClient;
 };
 
+window.getManheimAuthSession = function getManheimAuthSession(client) {
+  const run = async () => {
+    let lastError = null;
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      try {
+        return await client.auth.getSession();
+      } catch (error) {
+        lastError = error;
+        if (!isSupabaseLockError(error)) throw error;
+        await wait(150 + attempt * 150);
+      }
+    }
+    throw lastError;
+  };
+  window.__manheimAuthSessionQueue = (window.__manheimAuthSessionQueue || Promise.resolve())
+    .catch(() => {})
+    .then(run);
+  return window.__manheimAuthSessionQueue;
+};
+
+function isSupabaseLockError(error) {
+  return /lock:sb-|lock broken|stole|released because another request/i.test(error?.message || String(error));
+}
+
+function wait(ms) {
+  return new Promise(resolve => window.setTimeout(resolve, ms));
+}
+
 (function bootExtensions() {
   document.addEventListener('DOMContentLoaded', loadMapModule);
   loadAttendanceModule();
@@ -35,7 +63,7 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
     if (document.querySelector('script[src^="./map-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './map-module.js?v=mapfix-20260501-1';
+    script.src = './map-module.js?v=authlock-20260501-1';
     document.head.appendChild(script);
   }
 
@@ -43,7 +71,7 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
     if (document.querySelector('script[src^="./attendance-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './attendance-module.js?v=cleanup-20260501-1';
+    script.src = './attendance-module.js?v=authlock-20260501-1';
     document.head.appendChild(script);
   }
 
@@ -51,7 +79,7 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
     if (document.querySelector('script[src^="./participant-timeline-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './participant-timeline-module.js?v=cleanup-20260501-1';
+    script.src = './participant-timeline-module.js?v=authlock-20260501-1';
     document.head.appendChild(script);
   }
 
@@ -183,7 +211,7 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
           if (box) box.textContent = 'Idee wird gespeichert ...';
           const { createClient } = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm');
           const client = window.getManheimSupabaseClient(createClient);
-          const { data: sessionData, error: sessionError } = await withTimeout(client.auth.getSession(), 'Session laden');
+          const { data: sessionData, error: sessionError } = await withTimeout(window.getManheimAuthSession(client), 'Session laden');
           if (sessionError) throw sessionError;
           const userId = sessionData?.session?.user?.id;
           if (!userId) throw new Error('Keine aktive Anmeldung gefunden. Bitte neu anmelden.');
