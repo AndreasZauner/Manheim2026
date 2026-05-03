@@ -63,7 +63,7 @@ function wait(ms) {
     if (document.querySelector('script[src^="./map-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './map-module.js?v=authlock-20260501-1';
+    script.src = './map-module.js?v=ui-polish-20260503-1';
     document.head.appendChild(script);
   }
 
@@ -159,7 +159,7 @@ function wait(ms) {
       input.type = 'text';
       input.setAttribute('list', list.id);
       input.autocomplete = 'off';
-      input.placeholder = 'Kategorie waehlen oder neu eintippen';
+      input.placeholder = 'Kategorie w\u00e4hlen oder neu eintippen';
       input.style.width = '100%';
       select.insertAdjacentElement('afterend', list);
       select.insertAdjacentElement('afterend', input);
@@ -253,7 +253,7 @@ function wait(ms) {
     const t = String(text || '').toLowerCase();
     const rules = [
       [gisWords, 'dokumentation', 'GIS / Kartenviewer'],
-      [['befund','profil','planum','foto','sfm','dokumentation','nummer','fundliste','qc'], 'dokumentation', 'Qualitaetskontrolle'],
+      [['befund','profil','planum','foto','sfm','dokumentation','nummer','fundliste','qc'], 'dokumentation', 'Qualit\u00e4tskontrolle'],
       [['schnitt','schnittleiter','antoniterhof','hofkapelle','marktplatz','villa','grabenstruktur','flaeche','fl\u00e4che'], 'schnitte', 'Feldorganisation'],
       [['teilnehmer','studierende','personal','zusage','verfuegbarkeit','verf\u00fcgbarkeit','onboarding','schicht'], 'personal', 'Teilnehmendenmanagement'],
       [['buero','b\u00fcro','haus','transport','fahrzeug','lager','material','warnweste','unterkunft'], 'logistik', 'Infrastruktur'],
@@ -268,7 +268,7 @@ function wait(ms) {
   function valueFor(label) { return knownCategories.find(([, text]) => text.toLowerCase() === String(label).trim().toLowerCase())?.[0] || String(label || '').trim(); }
   function withTimeout(promise, label, ms = 15000) {
     let timeoutId;
-    const timeout = new Promise((_, reject) => { timeoutId = window.setTimeout(() => reject(new Error(`${label} dauert zu lange. Bitte Verbindung und Supabase pruefen.`)), ms); });
+    const timeout = new Promise((_, reject) => { timeoutId = window.setTimeout(() => reject(new Error(`${label} dauert zu lange. Bitte Verbindung und Supabase pr\u00fcfen.`)), ms); });
     return Promise.race([Promise.resolve(promise).finally(() => window.clearTimeout(timeoutId)), timeout]);
   }
   function escapeHtml(value) { return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;'); }
