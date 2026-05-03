@@ -11,3 +11,10 @@ Thumbs.db
 
 # Optional: lokale Kopien mit echten Zugangsdaten
 config.local.js
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
