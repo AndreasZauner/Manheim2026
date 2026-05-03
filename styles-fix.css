@@ -226,6 +226,94 @@ input[type="password"] {
   background: #f8fbff;
 }
 
+.nav-extra-btn {
+  width: 100%;
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #eaf4ff;
+  cursor: pointer;
+  display: block;
+  font: inherit;
+  font-weight: 700;
+  padding: 12px 16px;
+  text-align: left;
+}
+
+.nav-extra-btn:hover,
+.nav-extra-btn:focus-visible,
+.nav-extra-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  outline: none;
+}
+
+.openpoints-head {
+  align-items: flex-start;
+}
+
+.openpoint-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) 160px 140px;
+  gap: 10px;
+  min-width: min(100%, 520px);
+}
+
+.openpoint-filters input,
+.openpoint-filters select {
+  width: 100%;
+  min-width: 0;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: #fff;
+  padding: 10px 12px;
+  color: var(--text);
+}
+
+.openpoint-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.openpoint-grid {
+  display: grid;
+  grid-template-columns: minmax(300px, 0.8fr) minmax(0, 1.4fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.openpoint-compose,
+.openpoint-list-panel,
+.openpoint-item {
+  min-width: 0;
+}
+
+.openpoint-list-panel .openpoint-item {
+  display: grid;
+  gap: 8px;
+}
+
+.openpoint-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.openpoint-meta .pill {
+  margin: 0;
+}
+
+.openpoint-text {
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -275,6 +363,8 @@ input[type="password"] {
   .dashboard-grid,
   .two-col,
   .mindmap-grid,
+  .openpoint-grid,
+  .openpoint-filters,
   .finance-box-grid,
   .form-grid {
     grid-template-columns: 1fr;
