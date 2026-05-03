@@ -1,7 +1,4 @@
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
-
 const LOGIN_TIMEOUT_MS = 20000;
-const SESSION_TIMEOUT_MS = 12000;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', installAuthLockHotfix);
@@ -10,8 +7,8 @@ if (document.readyState === 'loading') {
 }
 
 function installAuthLockHotfix() {
-  if (window.__manheimAuthLockHotfixV2) return;
-  window.__manheimAuthLockHotfixV2 = true;
+  if (window.__manheimAuthLockHotfixV3) return;
+  window.__manheimAuthLockHotfixV3 = true;
 
   document.addEventListener('submit', (event) => {
     if (event.target?.id !== 'loginForm') return;
@@ -45,17 +42,7 @@ async function handleLogin(event) {
       LOGIN_TIMEOUT_MS
     );
 
-    const client = getClient();
-    const { error } = await withTimeout(
-      client.auth.setSession({
-        access_token: authData.access_token,
-        refresh_token: authData.refresh_token
-      }),
-      'Session speichern',
-      SESSION_TIMEOUT_MS
-    );
-    if (error) throw error;
-
+    persistSupabaseSession(authData);
     setMessage(message, 'Angemeldet. Lade App neu ...');
     window.setTimeout(() => {
       window.location.replace(`${window.location.pathname}?login=${Date.now()}`);
@@ -96,13 +83,17 @@ async function passwordGrant(email, password) {
   return payload;
 }
 
-function getClient() {
+function persistSupabaseSession(authData) {
   const config = window.APP_CONFIG || {};
-  return window.getManheimSupabaseClient?.(createClient) || createClient(
-    config.SUPABASE_URL,
-    config.SUPABASE_ANON_KEY,
-    { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
-  );
+  const projectRef = new URL(config.SUPABASE_URL).hostname.split('.')[0];
+  const storageKey = `sb-${projectRef}-auth-token`;
+  const expiresIn = Number(authData.expires_in || 3600);
+  const session = {
+    ...authData,
+    expires_in: expiresIn,
+    expires_at: authData.expires_at || Math.floor(Date.now() / 1000) + expiresIn
+  };
+  window.localStorage.setItem(storageKey, JSON.stringify(session));
 }
 
 function withTimeout(promise, label, ms) {
