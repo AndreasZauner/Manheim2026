@@ -7,7 +7,6 @@
   <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./styles-fix.css?v=ui-polish-20260503-1" />
-  <script src="./auth-lock-shim.js?v=auth-lock-20260503-1"></script>
   <script src="./config.js?v=ui-polish-20260503-1"></script>
 </head>
 <body>
@@ -128,10 +127,8 @@
       <section id="helpTab" class="tab"><div class="section-head"><div><h3>Hilfe &amp; Setup</h3><p class="muted">Kurz erkl&auml;rt f&uuml;r die Nutzung auf verschiedenen Ger&auml;ten und f&uuml;r die erste Ver&ouml;ffentlichung.</p></div></div><div class="two-col"><section class="panel"><div class="panel-head"><h3>So arbeiten Sie damit</h3></div><ol class="help-list"><li>Die Website l&auml;uft online &uuml;ber Cloudflare Pages.</li><li>Alle Daten liegen zentral in Supabase &ndash; nicht mehr lokal nur in einer HTML-Datei.</li><li>Jede Person meldet sich mit eigenem Konto an.</li><li>Sie als Admin schalten Konten frei und vergeben Rollen.</li><li>Aufgaben, Ideen, Teilnehmende und Timeline werden f&uuml;r alle Ger&auml;te synchron gespeichert.</li></ol></section><section class="panel"><div class="panel-head"><h3>Wichtige Dateien in diesem Paket</h3></div><ul class="help-list"><li><code>index.html</code> &ndash; die eigentliche Web-App</li><li><code>styles.css</code> &ndash; Gestaltung</li><li><code>app.js</code> &ndash; Login, Datenlogik, Rollen, Kalender, Auto-Zuordnung</li><li><code>config.example.js</code> &ndash; Vorlage f&uuml;r Ihre Supabase-Zugangsdaten</li><li><code>supabase/schema.sql</code> &ndash; Datenbank und Rechte</li><li><code>supabase/seed.sql</code> &ndash; Startdaten aus diesem Chat und Ihrer Teilnehmerdatei</li><li><code>README.md</code> &ndash; Schritt-f&uuml;r-Schritt-Anleitung</li></ul></section></div></section>
     </main>
   </div>
-  <script type="module" src="./auth-lock-hotfix.js?v=auth-lock-20260503-3"></script>
   <script type="module" src="./app.js"></script>
   <script type="module" src="./map-module.js?v=ui-polish-20260503-1"></script>
   <script type="module" src="./phase3-field-doku-module.js?v=ui-polish-20260503-1"></script>
-  <script type="module" src="./finance-module.js?v=finance-20260503-1"></script>
 </body>
 </html>
