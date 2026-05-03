@@ -120,7 +120,59 @@
 
       <section id="participantsTab" class="tab"><div class="section-head"><div><h3>Personal</h3><p class="muted">Personaleinsatz, Zeitr&auml;ume, Verbindlichkeit und Hinweise.</p></div></div><div class="two-col"><section class="panel" id="participantFormPanel"><div class="panel-head"><h3>Person hinzuf&uuml;gen</h3><span class="muted">nur f&uuml;r Leitungsrollen</span></div><form id="participantForm" class="form-grid"><label>Name<input type="text" name="full_name" required /></label><label>Rolle<input type="text" name="public_role" placeholder="Teilnehmende / Schnittleitung ..." /></label><label>Von<input type="date" name="availability_from" /></label><label>Bis<input type="date" name="availability_to" /></label><label>Status<select name="status"><option value="zugesagt">zugesagt</option><option value="gesetzt">gesetzt</option><option value="zu_kl&auml;ren">zu kl&auml;ren</option><option value="anzufragen">anzufragen</option></select></label><label>Telefon<input type="text" name="phone" /></label><label>E-Mail<input type="email" name="email" /></label><label class="span-2">Bemerkungen<textarea name="availability_note" rows="3"></textarea></label><label class="span-2">Interne Notiz<textarea name="internal_note" rows="3"></textarea></label><div class="span-2 button-row"><button class="btn primary" type="submit">Person speichern</button></div></form></section><section class="panel"><div class="panel-head"><h3>Anwesenheit &amp; Liste</h3><span class="muted">automatisch synchronisiert</span></div><div id="participantsSummary" class="summary-row"></div><div class="table-wrap"><table class="data-table"><thead id="participantsHead"></thead><tbody id="participantsBody"></tbody></table></div></section></div></section>
 
-      <section id="ideasTab" class="tab"><div class="section-head"><div><h3>Finanzen &amp; Beschaffung</h3><p class="muted">Offene Kostenpunkte, Beschaffungsideen und Hinweise f&uuml;r Phase 3.</p></div></div><div class="two-col"><section class="panel"><div class="panel-head"><h3>Neue Idee / Notiz</h3></div><form id="ideaForm" class="form-grid"><label class="span-2">Titel<input type="text" name="title" required /></label><label>Kategorie<select name="category" id="ideaFormCategory"></select></label><label>Unterpunkt<input type="text" name="subcategory" /></label><label class="span-2">Text<textarea name="body" rows="6" required></textarea></label><div class="span-2 suggestion-box" id="ideaSuggestionBox"></div><div class="span-2 button-row"><button class="btn primary" type="submit">Idee speichern</button></div></form></section><section class="panel"><div class="panel-head"><h3>Vorhandene Ideen und Notizen</h3></div><div id="ideaList" class="stack-list"></div></section></div></section>
+      <section id="ideasTab" class="tab">
+        <div class="section-head">
+          <div>
+            <h3>Finanzen &amp; Beschaffung</h3>
+            <p class="muted">Beschaffungsplanung und Buchhaltung f&uuml;r den Grabungsalltag.</p>
+          </div>
+        </div>
+        <div class="finance-sections">
+          <details class="finance-section" open>
+            <summary>
+              <span>Ausgaben / Beschaffungsplanung</span>
+              <span class="muted">Bedarfe, offene Eink&auml;ufe und Beschaffungshinweise</span>
+            </summary>
+            <div class="two-col">
+              <section class="panel">
+                <div class="panel-head"><h3>Neuer Bedarf / Hinweis</h3></div>
+                <form id="ideaForm" class="form-grid">
+                  <label class="span-2">Titel<input type="text" name="title" required /></label>
+                  <label>Kategorie<select name="category" id="ideaFormCategory"></select></label>
+                  <label>Unterpunkt<input type="text" name="subcategory" placeholder="z. B. Lebensmittel, Sprit, Werkzeug" /></label>
+                  <label class="span-2">Beschreibung<textarea name="body" rows="6" required></textarea></label>
+                  <div class="span-2 suggestion-box" id="ideaSuggestionBox"></div>
+                  <div class="span-2 button-row"><button class="btn primary" type="submit">Bedarf speichern</button></div>
+                </form>
+              </section>
+              <section class="panel">
+                <div class="panel-head"><h3>Offene Beschaffungsnotizen</h3></div>
+                <div id="ideaList" class="stack-list"></div>
+              </section>
+            </div>
+          </details>
+          <details class="finance-section">
+            <summary>
+              <span>Buchhaltung</span>
+              <span class="muted">Get&auml;tigte Ausgaben, Belege und Abrechnung</span>
+            </summary>
+            <div class="finance-accounting-grid">
+              <section class="panel">
+                <div class="panel-head"><h3>Beleg&uuml;bersicht</h3></div>
+                <div class="empty">Noch keine gebuchten Ausgaben vorhanden.</div>
+              </section>
+              <section class="panel">
+                <div class="panel-head"><h3>Abrechnungsstatus</h3></div>
+                <div class="finance-status-list">
+                  <div><strong>Offen</strong><span>0</span></div>
+                  <div><strong>Beleg fehlt</strong><span>0</span></div>
+                  <div><strong>Zur Uni weitergegeben</strong><span>0</span></div>
+                </div>
+              </section>
+            </div>
+          </details>
+        </div>
+      </section>
 
       <section id="adminTab" class="tab"><div class="section-head"><div><h3>Verwaltung</h3><p class="muted">Rollen, Freischaltungen und Systemeinstellungen bleiben gesch&uuml;tzt.</p></div></div><div class="two-col"><section class="panel"><div class="panel-head"><h3>Benutzerverwaltung</h3><span class="muted">nur Admin</span></div><div class="table-wrap"><table class="data-table"><thead><tr><th>Name</th><th>E-Mail</th><th>Rolle</th><th>Aktiv</th><th>Aktion</th></tr></thead><tbody id="profilesBody"></tbody></table></div></section><section class="panel"><div class="panel-head"><h3>Projektstatus</h3></div><div class="stack-list" id="adminInfoList"></div></section></div></section>
 
