@@ -1,6 +1,7 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 const LOGIN_TIMEOUT_MS = 20000;
+const SESSION_TIMEOUT_MS = 12000;
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', installAuthLockHotfix);
@@ -9,37 +10,90 @@ if (document.readyState === 'loading') {
 }
 
 function installAuthLockHotfix() {
-  const form = document.getElementById('loginForm');
-  if (!form || form.dataset.authLockHotfix === 'true') return;
-  form.dataset.authLockHotfix = 'true';
-  form.addEventListener('submit', handleLogin, true);
+  if (window.__manheimAuthLockHotfixV2) return;
+  window.__manheimAuthLockHotfixV2 = true;
+
+  document.addEventListener('submit', (event) => {
+    if (event.target?.id !== 'loginForm') return;
+    handleLogin(event);
+  }, true);
 }
 
 async function handleLogin(event) {
   event.preventDefault();
   event.stopImmediatePropagation();
 
-  const form = event.currentTarget;
+  const form = event.target;
   const button = form.querySelector('button[type="submit"]');
   const message = document.getElementById('authMessage');
   const data = new FormData(form);
+  const email = String(data.get('email') || '').trim();
+  const password = String(data.get('password') || '');
+
+  if (!email || !password) {
+    setMessage(message, 'Bitte E-Mail und Passwort eingeben.', true);
+    return;
+  }
 
   try {
     if (button) button.disabled = true;
-    setMessage(message, 'Anmeldung laeuft ...');
+    setMessage(message, 'Direkte Anmeldung laeuft ...');
+
+    const authData = await withTimeout(
+      passwordGrant(email, password),
+      'Anmeldung',
+      LOGIN_TIMEOUT_MS
+    );
+
     const client = getClient();
-    const { error } = await withTimeout(client.auth.signInWithPassword({
-      email: String(data.get('email') || '').trim(),
-      password: data.get('password')
-    }), 'Anmeldung', LOGIN_TIMEOUT_MS);
+    const { error } = await withTimeout(
+      client.auth.setSession({
+        access_token: authData.access_token,
+        refresh_token: authData.refresh_token
+      }),
+      'Session speichern',
+      SESSION_TIMEOUT_MS
+    );
     if (error) throw error;
-    await withTimeout(getAuthSession(client), 'Session laden', 12000);
-    setMessage(message, 'Angemeldet. Lade App ...');
-    window.setTimeout(() => window.location.reload(), 250);
+
+    setMessage(message, 'Angemeldet. Lade App neu ...');
+    window.setTimeout(() => {
+      window.location.replace(`${window.location.pathname}?login=${Date.now()}`);
+    }, 250);
   } catch (error) {
     setMessage(message, error?.message || String(error), true);
     if (button) button.disabled = false;
   }
+}
+
+async function passwordGrant(email, password) {
+  const config = window.APP_CONFIG || {};
+  if (!config.SUPABASE_URL || !config.SUPABASE_ANON_KEY) {
+    throw new Error('Supabase-Konfiguration fehlt.');
+  }
+
+  const response = await fetch(`${config.SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      apikey: config.SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ email, password })
+  });
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      payload.error_description ||
+      payload.msg ||
+      payload.message ||
+      'Anmeldung fehlgeschlagen.'
+    );
+  }
+  if (!payload.access_token || !payload.refresh_token) {
+    throw new Error('Anmeldung erfolgreich, aber Sessiondaten fehlen.');
+  }
+  return payload;
 }
 
 function getClient() {
@@ -51,14 +105,13 @@ function getClient() {
   );
 }
 
-function getAuthSession(client) {
-  return window.getManheimAuthSession?.(client) || client.auth.getSession();
-}
-
 function withTimeout(promise, label, ms) {
   let timeoutId;
   const timeout = new Promise((_, reject) => {
-    timeoutId = window.setTimeout(() => reject(new Error(`${label} dauert zu lange. Bitte Seite neu laden und erneut versuchen.`)), ms);
+    timeoutId = window.setTimeout(
+      () => reject(new Error(`${label} dauert zu lange. Bitte Seite neu laden und erneut versuchen.`)),
+      ms
+    );
   });
   return Promise.race([
     Promise.resolve(promise).finally(() => window.clearTimeout(timeoutId)),
