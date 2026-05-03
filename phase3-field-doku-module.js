@@ -2,7 +2,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const FIELD_CATEGORIES = {
   dokumentation: 'Dokumentation',
-  schnitte: 'Grabungsflaechen',
+  schnitte: 'Grabungsfl\u00e4chen',
   funde: 'Funde / Proben',
   sicherheit: 'Sicherheit',
   schnittstelle_amt: 'Amt / Freigaben'
@@ -10,9 +10,9 @@ const FIELD_CATEGORIES = {
 const FIELD_CATEGORY_KEYS = new Set(Object.keys(FIELD_CATEGORIES));
 const OPEN_STATUSES = new Set(['offen', 'laufend', 'blockiert', 'aktiv', 'geplant', 'pruefen']);
 const NAV = {
-  dashboard: ['Leitstand', 'Tageslage, Prioritaeten, Klaerungsbedarf und Risiken'],
-  participants: ['Personal', 'Personaleinsatz, Zeitraeume, Verbindlichkeit und Hinweise'],
-  mindmap: ['Feld & Doku', 'Kartenviewer, Feldstruktur, Dokumentationshinweise und Fortschritt'],
+  dashboard: ['Leitstand', 'Tageslage, Priorit\u00e4ten, Kl\u00e4rungsbedarf und Risiken'],
+  participants: ['Personal', 'Personaleinsatz, Zeitr\u00e4ume, Verbindlichkeit und Hinweise'],
+  mindmap: ['Feld & Doku', 'Karte, Feldstruktur, Dokumentationshinweise und Fortschritt'],
   tasks: ['Infrastruktur', 'Ressourcen, Logistik und operative Aufgaben'],
   ideas: ['Finanzen', 'Beschaffung, offene Kostenpunkte und vorgemerkte Hinweise'],
   admin: ['Verwaltung', 'Rollen, Freischaltungen und Systemeinstellungen']
@@ -118,7 +118,7 @@ function ensureFieldDokuShell() {
 
   head.querySelector('h3')?.replaceChildren(document.createTextNode('Feld & Doku'));
   head.querySelector('.muted, p')?.replaceChildren(
-    document.createTextNode('Kartenviewer, Feldstruktur, Dokumentationshinweise und Fortschritt.')
+    document.createTextNode('Karte, Feldstruktur, Dokumentationshinweise und Fortschritt.')
   );
 
   if (document.getElementById('fieldDokuPhase3')) return;
@@ -131,10 +131,10 @@ function ensureFieldDokuShell() {
         <div>
           <div class="field-doku-eyebrow">Phase 3</div>
           <h3>Feldsteuerung & Dokumentationslage</h3>
-          <p>Raumdaten, Grabungsflaechen, Doku-Hinweise und operative Feldpunkte werden hier als Arbeitsuebersicht zusammengefuehrt.</p>
+          <p>Raumdaten, Grabungsfl\u00e4chen, Doku-Hinweise und operative Feldpunkte werden hier als Arbeits\u00fcbersicht zusammengef\u00fchrt.</p>
         </div>
         <div class="button-row">
-          <button class="btn primary" type="button" id="fieldDokuOpenMap">Kartenviewer oeffnen</button>
+          <button class="btn primary" type="button" id="fieldDokuOpenMap">Karte</button>
           <button class="btn" type="button" id="fieldDokuRefresh">Feldstatus laden</button>
         </div>
       </section>
@@ -157,7 +157,7 @@ function ensureFieldDokuShell() {
           <select id="fieldDokuCategoryFilter">
             <option value="alle">Alle Bereiche</option>
             <option value="dokumentation">Dokumentation</option>
-            <option value="schnitte">Grabungsflaechen</option>
+            <option value="schnitte">Grabungsfl\u00e4chen</option>
             <option value="funde">Funde / Proben</option>
             <option value="sicherheit">Sicherheit</option>
             <option value="schnittstelle_amt">Amt / Freigaben</option>
@@ -264,13 +264,13 @@ async function loadFieldDokuData() {
   const sync = document.getElementById('fieldDokuSync');
   try {
     ensureFieldDokuShell();
-    if (sync) sync.textContent = 'laedt ...';
+    if (sync) sync.textContent = 'l\u00e4dt ...';
     const client = getClient();
     if (!client) {
       if (sync) sync.textContent = 'Supabase fehlt';
       return;
     }
-    const { data: sessionData } = await client.auth.getSession();
+    const { data: sessionData } = await getAuthSession(client);
     if (!sessionData?.session) {
       if (sync) sync.textContent = 'nicht angemeldet';
       return;
@@ -316,7 +316,7 @@ async function loadMapSummaryOnly() {
   try {
     const client = getClient();
     if (!client) return;
-    const { data: sessionData } = await client.auth.getSession();
+    const { data: sessionData } = await getAuthSession(client);
     if (!sessionData?.session) return;
     const { data, error } = await client
       .from('map_features')
@@ -347,6 +347,10 @@ function getClient() {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
   return state.client;
+}
+
+function getAuthSession(client) {
+  return window.getManheimAuthSession?.(client) || client.auth.getSession();
 }
 
 function renderFieldDoku() {
@@ -387,12 +391,12 @@ function renderItems(items) {
   if (!list) return;
   list.innerHTML = items.length
     ? items.map(renderItem).join('')
-    : '<div class="empty">Keine Feld- oder Dokumentationspunkte fuer diese Filter gefunden.</div>';
+    : '<div class="empty">Keine Feld- oder Dokumentationspunkte f\u00fcr diese Filter gefunden.</div>';
 }
 
 function renderProgress(fieldTasks, fieldNotes) {
   const phases = [
-    ['Flaechenplanung', ['schnitte', 'schnittstelle_amt']],
+    ['Fl\u00e4chenplanung', ['schnitte', 'schnittstelle_amt']],
     ['Dokumentationsstandard', ['dokumentation']],
     ['Sicherheit & Freigaben', ['sicherheit', 'schnittstelle_amt']],
     ['Funde / Probenlogik', ['funde']]
@@ -404,7 +408,7 @@ function renderProgress(fieldTasks, fieldNotes) {
     const done = rows.filter(item => ['erledigt', 'archiv'].includes(item.status)).length;
     const open = rows.length - done;
     const percent = rows.length ? Math.round((done / rows.length) * 100) : 0;
-    const note = rows.length ? `${done} erledigt / ${open} offen` : 'noch keine Eintraege';
+    const note = rows.length ? `${done} erledigt / ${open} offen` : 'noch keine Eintr\u00e4ge';
     return `
       <div class="field-doku-progress">
         <div class="field-doku-progress-head">
@@ -421,7 +425,7 @@ function renderMapSummary() {
   const host = document.getElementById('fieldDokuMapSummary');
   if (!host) return;
   if (state.mapError) {
-    host.innerHTML = `<div class="field-doku-alert">Kartenobjekte konnten noch nicht geladen werden. Falls das Kartenmodul noch nicht eingerichtet ist: <code>supabase/map_module.sql</code> ausfuehren.</div>`;
+    host.innerHTML = `<div class="field-doku-alert">Kartenobjekte konnten noch nicht geladen werden. Falls das Kartenmodul noch nicht eingerichtet ist: <code>supabase/map_module.sql</code> ausf\u00fchren.</div>`;
     return;
   }
   const byType = countBy(state.mapFeatures, item => item.geometry_type || 'ohne Geometrie');
@@ -430,7 +434,7 @@ function renderMapSummary() {
     ['Objekte gesamt', state.mapFeatures.length],
     ['Punkte', byType.Point || byType.MultiPoint || 0],
     ['Linien', byType.LineString || byType.MultiLineString || 0],
-    ['Flaechen', byType.Polygon || byType.MultiPolygon || 0],
+    ['Fl\u00e4chen', byType.Polygon || byType.MultiPolygon || 0],
     ['Aktiv / geplant', (byStatus.aktiv || 0) + (byStatus.geplant || 0)]
   ].map(([label, value]) => `<div class="field-doku-map-row"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`).join('');
 }
@@ -468,7 +472,7 @@ function toTaskItem(item) {
     category: item.category,
     status: item.status,
     priority: item.priority,
-    meta: [item.subcategory, item.assigned_role, item.due_date ? `faellig: ${formatDate(item.due_date)}` : ''].filter(Boolean).join(' / ')
+    meta: [item.subcategory, item.assigned_role, item.due_date ? `f\u00e4llig: ${formatDate(item.due_date)}` : ''].filter(Boolean).join(' / ')
   };
 }
 
@@ -509,15 +513,22 @@ function renderItem(item) {
   `;
 }
 
-function openMap() {
-  const mapButton = document.querySelector('[data-map-tab="map"]');
-  if (mapButton) {
-    mapButton.click();
-    return;
-  }
+async function openMap() {
   const sync = document.getElementById('fieldDokuSync');
-  if (sync) sync.textContent = 'Kartenmodul startet ...';
-  window.setTimeout(() => document.querySelector('[data-map-tab="map"]')?.click(), 700);
+  if (sync) sync.textContent = 'Karte wird ge\u00f6ffnet ...';
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    if (typeof window.openManheimMap === 'function') {
+      await window.openManheimMap();
+      return;
+    }
+    const mapButton = document.querySelector('[data-map-tab="map"]');
+    if (mapButton) {
+      mapButton.click();
+      return;
+    }
+    await wait(150);
+  }
+  if (sync) sync.textContent = 'Kartenmodul nicht bereit';
 }
 
 function hideStandaloneMapNav() {
@@ -535,6 +546,10 @@ function installMapNavObserver() {
   observer.observe(nav, { childList: true, subtree: true });
 }
 
+function wait(ms) {
+  return new Promise(resolve => window.setTimeout(resolve, ms));
+}
+
 function isOpen(item) {
   return OPEN_STATUSES.has(item.status || 'offen') && !['erledigt', 'archiv'].includes(item.status);
 }
@@ -548,7 +563,7 @@ function countBy(rows, getter) {
 }
 
 function prettyStatus(status) {
-  return ({ offen: 'offen', laufend: 'laufend', erledigt: 'erledigt', blockiert: 'blockiert', aktiv: 'aktiv', geplant: 'geplant', pruefen: 'pruefen', archiv: 'Archiv' })[status] || status || '-';
+  return ({ offen: 'offen', laufend: 'laufend', erledigt: 'erledigt', blockiert: 'blockiert', aktiv: 'aktiv', geplant: 'geplant', pruefen: 'pr\u00fcfen', archiv: 'Archiv' })[status] || status || '-';
 }
 
 function formatDate(value) {
