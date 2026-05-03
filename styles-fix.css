@@ -314,6 +314,18 @@ input[type="password"] {
   margin: 0;
 }
 
+.openpoint-delete-btn {
+  border-color: #f0b4b4;
+  color: #a11f1f;
+}
+
+.openpoint-delete-btn:hover,
+.openpoint-delete-btn:focus-visible {
+  background: #fff1f1;
+  border-color: #d96b6b;
+  color: #7f1515;
+}
+
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
