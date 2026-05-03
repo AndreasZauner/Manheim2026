@@ -36,6 +36,7 @@ const FINANCE_KEYWORDS = [
 const state = {
   client: null,
   session: null,
+  profile: null,
   notes: [],
   tasks: [],
   loaded: false,
@@ -105,6 +106,7 @@ async function loadOpenPoints() {
       els.list.innerHTML = '<div class="empty">Bitte anmelden, um offene Punkte zu sehen.</div>';
       return;
     }
+    await loadProfile();
 
     const [notesResult, tasksResult] = await Promise.all([
       state.client.from('notes').select('*').order('created_at', { ascending: false }),
@@ -204,6 +206,10 @@ function renderOpenPoints() {
   els.list.innerHTML = filtered.length
     ? filtered.map(openPointCard).join('')
     : '<div class="empty">Keine passenden offenen Punkte gefunden.</div>';
+
+  document.querySelectorAll('.openpoint-delete-btn').forEach((button) => {
+    button.addEventListener('click', onDeleteOpenPoint);
+  });
 }
 
 function getOpenPointItems() {
@@ -211,6 +217,8 @@ function getOpenPointItems() {
     const area = areaForNote(note);
     return {
       id: `note-${note.id}`,
+      table: 'notes',
+      rawId: note.id,
       source: note.note_type === 'idea' ? 'Idee' : 'Notiz',
       title: note.title || 'Ohne Titel',
       body: note.body || '',
@@ -228,6 +236,8 @@ function getOpenPointItems() {
     const due = task.due_date ? `Faellig: ${formatDate(task.due_date)}` : '';
     return {
       id: `task-${task.id}`,
+      table: 'tasks',
+      rawId: task.id,
       source: 'Aufgabe',
       title: task.title || 'Ohne Titel',
       body: [task.description, due, task.assigned_role].filter(Boolean).join(' - '),
@@ -245,6 +255,7 @@ function getOpenPointItems() {
 
 function openPointCard(item) {
   const categoryLabel = CATEGORY_LABELS[item.category] || item.category || item.areaLabel;
+  const canDelete = isAdmin() && item.table === 'notes';
   return `
     <article class="list-item openpoint-item">
       <div class="item-head">
@@ -257,11 +268,36 @@ function openPointCard(item) {
             <span class="status ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span>
           </div>
         </div>
+        ${canDelete ? `<button class="btn small danger openpoint-delete-btn" type="button" data-id="${escapeHtml(item.rawId)}">L&ouml;schen</button>` : ''}
       </div>
       ${item.subcategory ? `<div class="muted">${escapeHtml(item.subcategory)}</div>` : ''}
       ${item.body ? `<p class="openpoint-text">${escapeHtml(item.body)}</p>` : ''}
     </article>
   `;
+}
+
+async function onDeleteOpenPoint(event) {
+  if (!isAdmin()) {
+    alert('Nur Admins koennen offene Punkte loeschen.');
+    return;
+  }
+  const id = event.currentTarget?.dataset?.id;
+  if (!id) return;
+  const confirmed = window.confirm('Diesen offenen Punkt wirklich loeschen?');
+  if (!confirmed) return;
+
+  try {
+    state.client = state.client || getClient();
+    setSyncState('Loesche ...');
+    const { error } = await state.client.from('notes').delete().eq('id', id);
+    if (error) throw error;
+    state.loaded = false;
+    await loadOpenPoints();
+  } catch (error) {
+    console.error('[open-points-module] delete failed', error);
+    alert('Punkt konnte nicht geloescht werden: ' + (error.message || error));
+    setSyncState('Fehler');
+  }
 }
 
 function areaForNote(note) {
@@ -317,6 +353,21 @@ async function getSession(client) {
   const { data, error } = await client.auth.getSession();
   if (error) throw error;
   return data;
+}
+
+async function loadProfile() {
+  if (!state.session?.user?.id) return;
+  const { data, error } = await state.client
+    .from('profiles')
+    .select('id, role, is_active')
+    .eq('id', state.session.user.id)
+    .single();
+  if (error) throw error;
+  state.profile = data || null;
+}
+
+function isAdmin() {
+  return state.profile?.role === 'admin';
 }
 
 function setSyncState(label) {
