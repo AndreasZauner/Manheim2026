@@ -127,50 +127,44 @@
             <p class="muted">Beschaffungsplanung und Buchhaltung f&uuml;r den Grabungsalltag.</p>
           </div>
         </div>
-        <div class="finance-sections">
-          <details class="finance-section" open>
-            <summary>
-              <span>Ausgaben / Beschaffungsplanung</span>
-              <span class="muted">Bedarfe, offene Eink&auml;ufe und Beschaffungshinweise</span>
-            </summary>
-            <div class="two-col">
-              <section class="panel">
-                <div class="panel-head"><h3>Neuer Bedarf / Hinweis</h3></div>
-                <form id="ideaForm" class="form-grid">
-                  <label class="span-2">Titel<input type="text" name="title" required /></label>
-                  <label>Kategorie<select name="category" id="ideaFormCategory"></select></label>
-                  <label>Unterpunkt<input type="text" name="subcategory" placeholder="z. B. Lebensmittel, Sprit, Werkzeug" /></label>
-                  <label class="span-2">Beschreibung<textarea name="body" rows="6" required></textarea></label>
-                  <div class="span-2 suggestion-box" id="ideaSuggestionBox"></div>
-                  <div class="span-2 button-row"><button class="btn primary" type="submit">Bedarf speichern</button></div>
-                </form>
-              </section>
-              <section class="panel">
-                <div class="panel-head"><h3>Offene Beschaffungsnotizen</h3></div>
-                <div id="ideaList" class="stack-list"></div>
-              </section>
+        <div class="finance-box-grid">
+          <section class="finance-box">
+            <div class="finance-box-head">
+              <div>
+                <h3>Einkaufsplan</h3>
+                <p class="muted">Bedarfe, offene Eink&auml;ufe und Beschaffungshinweise.</p>
+              </div>
             </div>
-          </details>
-          <details class="finance-section">
-            <summary>
-              <span>Buchhaltung</span>
-              <span class="muted">Get&auml;tigte Ausgaben, Belege und Abrechnung</span>
-            </summary>
-            <div class="finance-accounting-grid">
-              <section class="panel">
-                <div class="panel-head"><h3>Beleg&uuml;bersicht</h3></div>
-                <div class="empty">Noch keine gebuchten Ausgaben vorhanden.</div>
-              </section>
-              <section class="panel">
-                <div class="panel-head"><h3>Abrechnungsstatus</h3></div>
-                <div class="finance-status-list">
-                  <div><strong>Offen</strong><span>0</span></div>
-                  <div><strong>Beleg fehlt</strong><span>0</span></div>
-                  <div><strong>Zur Uni weitergegeben</strong><span>0</span></div>
-                </div>
-              </section>
+            <form id="ideaForm" class="form-grid">
+              <label class="span-2">Titel<input type="text" name="title" required /></label>
+              <label>Kategorie<select name="category" id="ideaFormCategory"></select></label>
+              <label>Unterpunkt<input type="text" name="subcategory" placeholder="z. B. Lebensmittel, Sprit, Werkzeug" /></label>
+              <label class="span-2">Beschreibung<textarea name="body" rows="5" required></textarea></label>
+              <div class="span-2 suggestion-box" id="ideaSuggestionBox"></div>
+              <div class="span-2 button-row"><button class="btn primary" type="submit">Eintrag speichern</button></div>
+            </form>
+            <div class="finance-subsection">
+              <div class="panel-head"><h4>Offene Eintr&auml;ge</h4></div>
+              <div id="ideaList" class="stack-list"></div>
             </div>
-          </details>
+          </section>
+          <section class="finance-box">
+            <div class="finance-box-head">
+              <div>
+                <h3>Buchhaltung</h3>
+                <p class="muted">Get&auml;tigte Ausgaben, Belege und Abrechnung.</p>
+              </div>
+            </div>
+            <div class="finance-status-list">
+              <div><strong>Offen</strong><span>0</span></div>
+              <div><strong>Beleg fehlt</strong><span>0</span></div>
+              <div><strong>Zur Uni weitergegeben</strong><span>0</span></div>
+            </div>
+            <div class="finance-subsection">
+              <div class="panel-head"><h4>Beleg&uuml;bersicht</h4></div>
+              <div class="empty">Noch keine gebuchten Ausgaben vorhanden.</div>
+            </div>
+          </section>
         </div>
       </section>
 
