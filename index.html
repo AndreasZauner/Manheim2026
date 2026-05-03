@@ -63,6 +63,7 @@
       </div>
       <nav class="nav">
         <button class="nav-btn active" data-tab="dashboard">Leitstand</button>
+        <button class="nav-extra-btn" id="openPointsNavButton" type="button">Offene Punkte</button>
         <button class="nav-btn" data-tab="participants">Personal</button>
         <button class="nav-btn" data-tab="mindmap">Feld &amp; Doku</button>
         <button class="nav-btn" data-tab="tasks">Infrastruktur</button>
@@ -106,6 +107,64 @@
           <section class="panel"><div class="panel-head"><h3>1.5 Risiken / Ampel-Cockpit</h3><span class="muted">schneller F&uuml;hrungs&uuml;berblick</span></div><div id="cockpitGrid" class="cockpit-grid"></div></section>
           <section class="panel"><div class="panel-head"><h3>1.4 Termin- und Phasen&uuml;berblick</h3><span class="muted">Grabungszeitraum und Arbeitsphasen</span></div><div id="roleCards" class="role-grid"></div></section>
           <section class="panel"><div class="panel-head"><h3>1.3 Offene Punkte / Kl&auml;rungsbedarf</h3></div><div id="staffAlerts" class="stack-list"></div></section>
+        </div>
+      </section>
+
+      <section id="openPointsTab" class="tab">
+        <div class="section-head openpoints-head">
+          <div>
+            <h3>Offene Punkte</h3>
+            <p class="muted">Zentrale Arbeitsliste f&uuml;r Notizen, Kl&auml;rungsbedarf, Hinweise und offene Aufgaben.</p>
+          </div>
+          <div class="filters openpoint-filters">
+            <input id="openPointSearch" type="search" placeholder="Suchen" />
+            <select id="openPointAreaFilter">
+              <option value="alle">Alle Bereiche</option>
+              <option value="leitstand">Leitstand</option>
+              <option value="personal">Personal</option>
+              <option value="feld_doku">Feld &amp; Doku</option>
+              <option value="infrastruktur">Infrastruktur</option>
+              <option value="finanzen">Finanzen</option>
+              <option value="verwaltung">Verwaltung</option>
+            </select>
+            <select id="openPointStatusFilter">
+              <option value="alle">Alle Status</option>
+              <option value="offen">offen</option>
+              <option value="aktiv">aktiv</option>
+              <option value="laufend">laufend</option>
+              <option value="erledigt">erledigt</option>
+              <option value="blockiert">blockiert</option>
+            </select>
+          </div>
+        </div>
+        <div id="openPointSummary" class="openpoint-summary"></div>
+        <div class="openpoint-grid">
+          <section class="panel openpoint-compose">
+            <div class="panel-head"><h3>Neuer Punkt</h3><span class="muted">kurz erfassen, sp&auml;ter einordnen</span></div>
+            <form id="openPointForm" class="form-grid">
+              <label class="span-2">Titel<input type="text" name="title" required /></label>
+              <label>Bereich<select name="area">
+                <option value="leitstand">Leitstand</option>
+                <option value="personal">Personal</option>
+                <option value="feld_doku">Feld &amp; Doku</option>
+                <option value="infrastruktur">Infrastruktur</option>
+                <option value="finanzen">Finanzen</option>
+                <option value="verwaltung">Verwaltung</option>
+              </select></label>
+              <label>Status<select name="status">
+                <option value="offen">offen</option>
+                <option value="aktiv">aktiv</option>
+                <option value="erledigt">erledigt</option>
+              </select></label>
+              <label class="span-2">Unterpunkt<input type="text" name="subcategory" placeholder="z. B. Einkauf, Doku, Personalfrage" /></label>
+              <label class="span-2">Notiz<textarea name="body" rows="5" required></textarea></label>
+              <div class="span-2 button-row"><button class="btn primary" type="submit">Punkt speichern</button></div>
+            </form>
+          </section>
+          <section class="panel openpoint-list-panel">
+            <div class="panel-head"><h3>Arbeitsliste</h3><span class="muted">nach Bereich, Status und Text filterbar</span></div>
+            <div id="openPointList" class="stack-list"></div>
+          </section>
         </div>
       </section>
 
@@ -171,6 +230,7 @@
     </main>
   </div>
   <script type="module" src="./app.js"></script>
+  <script type="module" src="./open-points-module.js?v=open-points-20260503-1"></script>
   <script type="module" src="./map-module.js?v=ui-polish-20260503-1"></script>
   <script type="module" src="./phase3-field-doku-module.js?v=ui-polish-20260503-1"></script>
 </body>
