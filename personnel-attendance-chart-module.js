@@ -358,7 +358,10 @@ function injectStyles() {
   style.textContent = `
     .topbar {
       gap: 16px;
-      align-items: center;
+      align-items: flex-start;
+      position: relative;
+      min-height: 0;
+      margin-bottom: 8px;
     }
     .topbar > div:first-child {
       flex: 0 0 420px;
@@ -370,10 +373,13 @@ function injectStyles() {
       white-space: nowrap;
     }
     .personnel-attendance-chart.chart-card {
+      position: absolute;
+      top: 0;
+      right: 142px;
       flex: 0 0 clamp(540px, 39vw, 650px);
       max-width: clamp(540px, 39vw, 650px);
       min-width: 520px;
-      margin: 0 8px 0 auto;
+      margin: 0;
       background: #fffaf2;
       border: 1px solid #e1d6c7;
       border-radius: 16px;
@@ -507,6 +513,7 @@ function injectStyles() {
     @media (max-width: 1180px) {
       .topbar {
         flex-wrap: wrap;
+        min-height: 0;
       }
       .topbar > div:first-child {
         min-width: 0;
@@ -516,6 +523,7 @@ function injectStyles() {
         white-space: normal;
       }
       .personnel-attendance-chart.chart-card {
+        position: static;
         order: 3;
         flex-basis: 100%;
         max-width: none;
