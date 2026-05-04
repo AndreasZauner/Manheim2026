@@ -16,6 +16,10 @@ async function installParticipantBootstrap() {
       );
     }
     imports.push(
+      import('./participant-role-order-module.js?v=role-order-20260504-2')
+        .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
+    );
+    imports.push(
       import('./v21-phase12-module.js?v=authlock-20260501-1')
         .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
     );
