@@ -22,6 +22,7 @@ const state = {
   activeSubtab: 'presence',
   participants: [],
   privateRows: [],
+  availabilitySlots: [],
   search: '',
   status: 'all',
   sort: 'role',
@@ -56,7 +57,7 @@ function injectStylesheet() {
   if (document.querySelector('link[href^="./participant-planning-module.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = './participant-planning-module.css?v=planning-20260504-1';
+  link.href = './participant-planning-module.css?v=planning-20260504-2';
   document.head.appendChild(link);
 }
 
@@ -77,6 +78,7 @@ function bindAuthStateListener() {
       state.isManager = false;
       state.participants = [];
       state.privateRows = [];
+      state.availabilitySlots = [];
       renderDeployment();
       return;
     }
@@ -211,6 +213,17 @@ async function loadData() {
   if (privateResult.error) throw privateResult.error;
   state.participants = participantsResult.data || [];
   state.privateRows = state.isManager ? privateResult.data || [] : [];
+  const { data: slots, error: slotsError } = await state.client
+    .from('participant_availability_slots')
+    .select('id,participant_id,availability_from,availability_to,order_index')
+    .order('order_index', { ascending: true })
+    .order('availability_from', { ascending: true, nullsFirst: false });
+  if (slotsError) {
+    console.warn('Zusatzzeiträume konnten nicht geladen werden. Wurde supabase/participant_availability_slots.sql ausgeführt?', slotsError);
+    state.availabilitySlots = [];
+  } else {
+    state.availabilitySlots = slots || [];
+  }
 }
 
 function renderDeployment() {
@@ -335,11 +348,11 @@ function roleRank(role) {
 }
 
 function renderDeploymentRow(person) {
-  const range = getRange(person);
+  const ranges = getRanges(person);
   const privateData = privateFor(person.id);
   const note = [person.availability_note, privateData.internal_note, person.source_note].filter(Boolean).join(' \u00b7 ');
-  const timeline = range.valid
-    ? `<div class="personnel-timeline"><div class="personnel-bar ${barColor(person.status)}" style="left:${range.left}%;width:${range.width}%">${formatDate(person.availability_from)} - ${formatDate(person.availability_to)}</div></div>`
+  const timeline = ranges.length
+    ? `<div class="personnel-timeline">${ranges.map((range, index) => `<div class="personnel-bar personnel-bar-segment ${barColor(person.status)}" style="left:${range.left}%;width:${range.width}%">${index === 0 ? escapeHtml(formatSlotSummary(person)) : ''}</div>`).join('')}</div>`
     : '<div class="personnel-unclear">Zeitraum unklar / uneinheitlich</div>';
   return `
     <article class="personnel-row">
@@ -350,11 +363,11 @@ function renderDeploymentRow(person) {
         </div>
         ${state.isManager ? `<button class="personnel-role personnel-role-edit-btn" type="button" data-id="${escapeHtml(person.id)}">${escapeHtml(person.public_role || 'Teilnehmende')}</button>` : `<span class="personnel-role">${escapeHtml(person.public_role || 'Teilnehmende')}</span>`}
         <div class="personnel-meta">
-          <span class="personnel-badge outline">${formatDate(person.availability_from)} ${person.availability_to ? '- ' + formatDate(person.availability_to) : ''}</span>
+          <span class="personnel-badge outline">${escapeHtml(formatSlotSummary(person))}</span>
           ${hasProblem(person) ? '<span class="personnel-badge warning">Kl\u00e4rungsbedarf</span>' : ''}
           ${state.isManager && privateData.email ? `<span class="personnel-badge outline">${escapeHtml(privateData.email)}</span>` : ''}
         </div>
-        ${state.isManager ? `<div class="personnel-actions"><button class="btn small personnel-date-edit-btn" type="button" data-id="${escapeHtml(person.id)}">Zeitraum aendern</button></div>` : ''}
+        ${state.isManager ? `<div class="personnel-actions"><button class="btn small personnel-date-edit-btn" type="button" data-id="${escapeHtml(person.id)}">Zeitraum ändern</button></div>` : ''}
       </div>
       <div class="personnel-timeline-cell">
         <div class="personnel-timeline-wrap">
@@ -471,13 +484,12 @@ function openDateEditor(participantId) {
   const drawer = ensureDateEditor();
   drawer.querySelector('#personnelDateName').textContent = person.full_name || 'Ohne Namen';
   drawer.querySelector('#personnelDateRole').textContent = person.public_role || 'Teilnehmende';
-  drawer.querySelector('#personnelDateFrom').value = dateInputValue(person.availability_from);
-  drawer.querySelector('#personnelDateTo').value = dateInputValue(person.availability_to);
+  renderDateSlotInputs(drawer, getEditableSlots(person));
   drawer.querySelector('#personnelDateError').textContent = '';
   document.getElementById('personnelDateBackdrop')?.classList.add('open');
   drawer.classList.add('open');
   drawer.setAttribute('aria-hidden', 'false');
-  drawer.querySelector('#personnelDateFrom')?.focus();
+  drawer.querySelector('[data-slot-field="from"]')?.focus();
 }
 
 function ensureDateEditor() {
@@ -488,19 +500,15 @@ function ensureDateEditor() {
     <aside id="personnelDateDrawer" class="personnel-drawer personnel-date-drawer" aria-hidden="true">
       <div class="personnel-drawer-header">
         <div>
-          <h3>Teilnahmezeitraum aendern</h3>
+          <h3>Teilnahmezeitraum ändern</h3>
           <p><strong id="personnelDateName"></strong><br><span id="personnelDateRole"></span></p>
         </div>
         <button id="personnelDateClose" class="personnel-close" type="button" aria-label="Schliessen">x</button>
       </div>
       <form id="personnelDateForm" class="personnel-date-form">
         <div class="personnel-drawer-body">
-          <label>Verfuegbar von
-            <input id="personnelDateFrom" class="personnel-field" type="date" min="2026-07-27" max="2026-10-09" required>
-          </label>
-          <label>Verfuegbar bis
-            <input id="personnelDateTo" class="personnel-field" type="date" min="2026-07-27" max="2026-10-09" required>
-          </label>
+          <div id="personnelDateSlots" class="personnel-date-slots full"></div>
+          <button id="personnelAddSlot" class="personnel-add-slot-btn full" type="button" aria-label="Weiteren Zeitraum hinzufügen">+ Weiteren Zeitraum hinzufügen</button>
           <p id="personnelDateError" class="personnel-form-error full" role="alert"></p>
         </div>
         <div class="personnel-drawer-footer">
@@ -514,6 +522,11 @@ function ensureDateEditor() {
   document.getElementById('personnelDateBackdrop')?.addEventListener('click', closeDateEditor);
   document.getElementById('personnelDateClose')?.addEventListener('click', closeDateEditor);
   drawer.querySelector('[data-personnel-date-cancel]')?.addEventListener('click', closeDateEditor);
+  drawer.querySelector('#personnelAddSlot')?.addEventListener('click', addDateSlotRow);
+  drawer.addEventListener('click', event => {
+    const removeButton = event.target?.closest?.('[data-remove-slot]');
+    if (removeButton) removeDateSlotRow(Number(removeButton.dataset.removeSlot));
+  });
   drawer.querySelector('#personnelDateForm')?.addEventListener('submit', saveDateRange);
   return drawer;
 }
@@ -531,30 +544,56 @@ async function saveDateRange(event) {
   if (!state.isManager || !state.client || !state.editingParticipantId) return;
   const drawer = document.getElementById('personnelDateDrawer');
   const errorNode = drawer?.querySelector('#personnelDateError');
-  const from = drawer?.querySelector('#personnelDateFrom')?.value;
-  const to = drawer?.querySelector('#personnelDateTo')?.value;
-  if (!from || !to) {
-    if (errorNode) errorNode.textContent = 'Bitte Anfangs- und Enddatum eintragen.';
+  const slots = readDateSlotInputs(drawer).sort((a, b) => compareDates(a.availability_from, b.availability_from));
+  if (!slots.length) {
+    if (errorNode) errorNode.textContent = 'Bitte mindestens einen Zeitraum eintragen.';
     return;
   }
-  if (new Date(`${to}T00:00:00`) < new Date(`${from}T00:00:00`)) {
-    if (errorNode) errorNode.textContent = 'Das Enddatum darf nicht vor dem Startdatum liegen.';
+  const invalidSlot = slots.find(slot => !slot.availability_from || !slot.availability_to);
+  if (invalidSlot) {
+    if (errorNode) errorNode.textContent = 'Bitte jeden Zeitraum vollständig mit Von und Bis ausfüllen.';
+    return;
+  }
+  if (slots.some(slot => new Date(`${slot.availability_to}T00:00:00`) < new Date(`${slot.availability_from}T00:00:00`))) {
+    if (errorNode) errorNode.textContent = 'Ein Enddatum darf nicht vor dem jeweiligen Startdatum liegen.';
     return;
   }
   const submitButton = drawer?.querySelector('button[type="submit"]');
   if (submitButton) submitButton.disabled = true;
   if (errorNode) errorNode.textContent = '';
   try {
+    const primarySlot = slots[0];
     const { error } = await state.client
       .from('participants')
-      .update({ availability_from: from, availability_to: to })
+      .update({ availability_from: primarySlot.availability_from, availability_to: primarySlot.availability_to })
       .eq('id', state.editingParticipantId);
     if (error) throw error;
+    const { error: deleteError } = await state.client
+      .from('participant_availability_slots')
+      .delete()
+      .eq('participant_id', state.editingParticipantId);
+    if (deleteError) throw deleteError;
+    const { data: savedSlots, error: insertError } = await state.client
+      .from('participant_availability_slots')
+      .insert(slots.map((slot, index) => ({
+        participant_id: state.editingParticipantId,
+        availability_from: slot.availability_from,
+        availability_to: slot.availability_to,
+        order_index: index + 1,
+        created_by: state.userId
+      })))
+      .select('id,participant_id,availability_from,availability_to,order_index')
+      .order('order_index', { ascending: true });
+    if (insertError) throw insertError;
     state.participants = state.participants.map(person => (
       String(person.id) === String(state.editingParticipantId)
-        ? { ...person, availability_from: from, availability_to: to }
+        ? { ...person, availability_from: primarySlot.availability_from, availability_to: primarySlot.availability_to }
         : person
     ));
+    state.availabilitySlots = [
+      ...state.availabilitySlots.filter(slot => String(slot.participant_id) !== String(state.editingParticipantId)),
+      ...(savedSlots || [])
+    ];
     closeDateEditor();
     renderDeployment();
   } catch (error) {
@@ -641,13 +680,13 @@ function exportPersonnelPdf() {
 }
 
 function renderPrintTimeline(person) {
-  const range = getRange(person);
-  if (!range.valid) return '<div class="print-dates">Zeitraum unklar / uneinheitlich</div>';
+  const ranges = getRanges(person);
+  if (!ranges.length) return '<div class="print-dates">Zeitraum unklar / uneinheitlich</div>';
   return `
     <div class="print-timeline">
-      <div class="print-bar ${barColor(person.status)}" style="left:${range.left}%;width:${range.width}%"></div>
+      ${ranges.map(range => `<div class="print-bar ${barColor(person.status)}" style="left:${range.left}%;width:${range.width}%"></div>`).join('')}
     </div>
-    <div class="print-dates">${escapeHtml(formatDate(person.availability_from))} - ${escapeHtml(formatDate(person.availability_to))}</div>
+    <div class="print-dates">${escapeHtml(formatSlotSummary(person))}</div>
   `;
 }
 
@@ -661,6 +700,73 @@ function privateFor(participantId) {
   return state.privateRows.find(row => Number(row.participant_id) === Number(participantId)) || {};
 }
 
+function slotsFor(person) {
+  const explicitSlots = state.availabilitySlots
+    .filter(slot => String(slot.participant_id) === String(person.id))
+    .sort((a, b) => (a.order_index ?? 999) - (b.order_index ?? 999) || compareDates(a.availability_from, b.availability_from));
+  if (explicitSlots.length) return explicitSlots;
+  if (person.availability_from || person.availability_to) {
+    return [{
+      participant_id: person.id,
+      availability_from: person.availability_from,
+      availability_to: person.availability_to,
+      order_index: 1
+    }];
+  }
+  return [];
+}
+
+function getEditableSlots(person) {
+  const slots = slotsFor(person).map(slot => ({
+    availability_from: dateInputValue(slot.availability_from),
+    availability_to: dateInputValue(slot.availability_to)
+  }));
+  return slots.length ? slots : [{ availability_from: '', availability_to: '' }];
+}
+
+function renderDateSlotInputs(drawer, slots) {
+  const container = drawer?.querySelector('#personnelDateSlots');
+  if (!container) return;
+  container.innerHTML = slots.map((slot, index) => `
+    <div class="personnel-date-slot" data-slot-index="${index}">
+      <div class="personnel-date-slot-head">
+        <strong>Zeitraum ${index + 1}</strong>
+        ${slots.length > 1 ? `<button class="personnel-remove-slot" type="button" data-remove-slot="${index}" aria-label="Zeitraum ${index + 1} entfernen">Entfernen</button>` : ''}
+      </div>
+      <label>Verfügbar von
+        <input class="personnel-field" type="date" data-slot-field="from" min="2026-07-27" max="2026-10-09" value="${escapeHtml(slot.availability_from || '')}" required>
+      </label>
+      <label>Verfügbar bis
+        <input class="personnel-field" type="date" data-slot-field="to" min="2026-07-27" max="2026-10-09" value="${escapeHtml(slot.availability_to || '')}" required>
+      </label>
+    </div>
+  `).join('');
+}
+
+function readDateSlotInputs(drawer) {
+  return [...(drawer?.querySelectorAll('.personnel-date-slot') || [])]
+    .map(row => ({
+      availability_from: row.querySelector('[data-slot-field="from"]')?.value || '',
+      availability_to: row.querySelector('[data-slot-field="to"]')?.value || ''
+    }))
+    .filter(slot => slot.availability_from || slot.availability_to);
+}
+
+function addDateSlotRow() {
+  const drawer = document.getElementById('personnelDateDrawer');
+  const slots = readDateSlotInputs(drawer);
+  slots.push({ availability_from: '', availability_to: '' });
+  renderDateSlotInputs(drawer, slots);
+}
+
+function removeDateSlotRow(index) {
+  const drawer = document.getElementById('personnelDateDrawer');
+  const slots = readDateSlotInputs(drawer);
+  if (slots.length <= 1) return;
+  slots.splice(index, 1);
+  renderDateSlotInputs(drawer, slots.length ? slots : [{ availability_from: '', availability_to: '' }]);
+}
+
 function hasProblem(person) {
   const text = [person.status, noteText(person)].filter(Boolean).join(' ').toLowerCase();
   return person.status === 'zu_kl\u00e4ren'
@@ -670,8 +776,22 @@ function hasProblem(person) {
 }
 
 function getRange(person) {
-  const start = parseDate(person.availability_from);
-  const end = parseDate(person.availability_to);
+  const slotRanges = slotsFor(person)
+    .map(slot => ({ start: parseDate(slot.availability_from), end: parseDate(slot.availability_to) }))
+    .filter(slot => slot.start && slot.end && slot.end >= slot.start);
+  if (!slotRanges.length) return { valid: false, left: 0, width: 0 };
+  const start = new Date(Math.min(...slotRanges.map(slot => slot.start.getTime())));
+  const end = new Date(Math.max(...slotRanges.map(slot => slot.end.getTime())));
+  return buildRange(start, end);
+}
+
+function getRanges(person) {
+  return slotsFor(person)
+    .map(slot => buildRange(parseDate(slot.availability_from), parseDate(slot.availability_to)))
+    .filter(range => range.valid);
+}
+
+function buildRange(start, end) {
   const total = PROJECT_END - PROJECT_START;
   if (!start || !end || end < start || end < PROJECT_START || start > PROJECT_END) return { valid: false, left: 0, width: 0 };
   const clippedStart = new Date(Math.max(start, PROJECT_START));
@@ -679,6 +799,12 @@ function getRange(person) {
   const left = clamp(((clippedStart - PROJECT_START) / total) * 100, 0, 100);
   const width = clamp(((clippedEnd - clippedStart) / total) * 100, 4, 100 - left);
   return { valid: true, left, width };
+}
+
+function formatSlotSummary(person) {
+  const slots = slotsFor(person).filter(slot => slot.availability_from || slot.availability_to);
+  if (!slots.length) return 'offen';
+  return slots.map(slot => `${formatDate(slot.availability_from)} - ${formatDate(slot.availability_to)}`).join(' · ');
 }
 
 function parseDate(value) {
