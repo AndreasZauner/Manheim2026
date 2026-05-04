@@ -236,14 +236,14 @@ function renderSvg(daily) {
       <text x="${width - margin.right}" y="${(y(CRITICAL_ATTENDANCE) + 18).toFixed(1)}" text-anchor="end" class="critical-text">kritisch unter 6</text>
       <path d="${areaPath}" class="attendance-area"></path>
       <path d="${linePath}" class="attendance-line"></path>
-      ${daily.map((day, index) => renderDateTick(day, index, x, height, margin, dateStep)).join('')}
+      ${daily.map((day, index) => renderDateTick(day, index, daily.length, x, height, margin, dateStep)).join('')}
       ${daily.map((day, index) => renderPoint(day, index, x, y)).join('')}
     </svg>
   `;
 }
 
-function renderDateTick(day, index, x, height, margin, step) {
-  if (index !== 0 && index !== day.length - 1 && index % step !== 0) return '';
+function renderDateTick(day, index, totalDays, x, height, margin, step) {
+  if (index !== 0 && index !== totalDays - 1 && index % step !== 0) return '';
   return `<text x="${x(index).toFixed(1)}" y="${height - margin.bottom + 28}" text-anchor="middle" class="tick-label x">${escapeHtml(day.label)}</text>`;
 }
 
