@@ -20,6 +20,10 @@ async function installParticipantBootstrap() {
         .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
     );
     imports.push(
+      import('./personnel-attendance-chart-module.js?v=attendance-chart-20260504-1')
+        .catch(error => console.error('Anwesenheitsdiagramm konnte nicht geladen werden', error))
+    );
+    imports.push(
       import('./v21-phase12-module.js?v=authlock-20260501-1')
         .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
     );
