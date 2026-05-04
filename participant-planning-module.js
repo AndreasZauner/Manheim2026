@@ -4,6 +4,16 @@ const PROJECT_START = new Date('2026-07-27T00:00:00');
 const PROJECT_END = new Date('2026-10-09T00:00:00');
 const MANAGER_ROLES = ['admin', 'professor', 'technical_lead', 'assistant'];
 const STATUS_ORDER = { gesetzt: 0, zugesagt: 1, 'zu_kl\u00e4ren': 2, anzufragen: 3 };
+const ROLE_PRESETS = [
+  'Grabungsleiter',
+  'Professor',
+  'Technische Leitung',
+  'Assistenz',
+  'Schnittleitung',
+  'Dokumentation',
+  'Logistik',
+  'Teilnehmende'
+];
 
 const state = {
   client: null,
@@ -14,10 +24,11 @@ const state = {
   privateRows: [],
   search: '',
   status: 'all',
-  sort: 'start',
+  sort: 'role',
   loading: false,
   authListenerBound: false,
-  editingParticipantId: null
+  editingParticipantId: null,
+  editingRoleId: null
 };
 
 if (document.readyState === 'loading') {
@@ -226,12 +237,13 @@ function renderDeployment() {
           <option value="anzufragen" ${state.status === 'anzufragen' ? 'selected' : ''}>anzufragen</option>
         </select>
         <select id="personnelSortBy" class="personnel-select">
+          <option value="role" ${state.sort === 'role' ? 'selected' : ''}>Nach Rolle / Start</option>
           <option value="start" ${state.sort === 'start' ? 'selected' : ''}>Nach Startdatum</option>
           <option value="name" ${state.sort === 'name' ? 'selected' : ''}>Alphabetisch</option>
           <option value="status" ${state.sort === 'status' ? 'selected' : ''}>Nach Status</option>
           <option value="problem" ${state.sort === 'problem' ? 'selected' : ''}>Kl\u00e4rungsbedarf zuerst</option>
         </select>
-        <button id="personnelPdfExport" class="btn small personnel-pdf-btn" type="button">PDF exportieren</button>
+        ${state.isManager ? '<button id="personnelPdfExport" class="btn small personnel-pdf-btn" type="button">PDF exportieren</button>' : ''}
       </div>
     </div>
     <section class="personnel-board">
@@ -280,6 +292,9 @@ function bindDeploymentUi() {
   document.querySelectorAll('.personnel-date-edit-btn').forEach(button => {
     button.addEventListener('click', () => openDateEditor(button.dataset.id));
   });
+  document.querySelectorAll('.personnel-role-edit-btn').forEach(button => {
+    button.addEventListener('click', () => openRoleEditor(button.dataset.id));
+  });
 }
 
 function getFilteredParticipants() {
@@ -291,6 +306,7 @@ function getFilteredParticipants() {
 }
 
 function comparePeople(a, b) {
+  if (state.sort === 'role') return compareRolePriority(a, b) || compareDates(a.availability_from, b.availability_from) || comparePeopleByName(a, b);
   if (state.sort === 'name') return comparePeopleByName(a, b);
   if (state.sort === 'status') return (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99) || comparePeopleByName(a, b);
   if (state.sort === 'problem') return Number(hasProblem(b)) - Number(hasProblem(a)) || compareDates(a.availability_from, b.availability_from);
@@ -299,6 +315,23 @@ function comparePeople(a, b) {
 
 function comparePeopleByName(a, b) {
   return String(a.full_name || '').localeCompare(String(b.full_name || ''), 'de');
+}
+
+function compareRolePriority(a, b) {
+  return roleRank(a.public_role) - roleRank(b.public_role)
+    || String(a.public_role || '').localeCompare(String(b.public_role || ''), 'de');
+}
+
+function roleRank(role) {
+  const text = String(role || '').toLowerCase();
+  if (/grabungsleit|projektleit|professor/.test(text)) return 0;
+  if (/technische leit|technical/.test(text)) return 1;
+  if (/assist/.test(text)) return 2;
+  if (/schnitt|trench/.test(text)) return 3;
+  if (/doku|dokument/.test(text)) return 4;
+  if (/logistik|infra/.test(text)) return 5;
+  if (/teilnehm|student|participant/.test(text)) return 6;
+  return 9;
 }
 
 function renderDeploymentRow(person) {
@@ -315,7 +348,7 @@ function renderDeploymentRow(person) {
           <strong>${escapeHtml(person.full_name || 'Ohne Namen')}</strong>
           <span class="personnel-badge ${statusClass(person.status)}">${prettyStatus(person.status)}</span>
         </div>
-        <span class="personnel-role">${escapeHtml(person.public_role || 'Teilnehmende')}</span>
+        ${state.isManager ? `<button class="personnel-role personnel-role-edit-btn" type="button" data-id="${escapeHtml(person.id)}">${escapeHtml(person.public_role || 'Teilnehmende')}</button>` : `<span class="personnel-role">${escapeHtml(person.public_role || 'Teilnehmende')}</span>`}
         <div class="personnel-meta">
           <span class="personnel-badge outline">${formatDate(person.availability_from)} ${person.availability_to ? '- ' + formatDate(person.availability_to) : ''}</span>
           ${hasProblem(person) ? '<span class="personnel-badge warning">Kl\u00e4rungsbedarf</span>' : ''}
@@ -345,6 +378,89 @@ function summaryCards(list) {
     ['Kl\u00e4rungsbedarf', clarificationNeeded],
     ['Mit Anmerkung', withNote]
   ].map(([label, value]) => `<div class="personnel-stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
+}
+
+function openRoleEditor(participantId) {
+  if (!state.isManager) return;
+  const person = state.participants.find(row => String(row.id) === String(participantId));
+  if (!person) return;
+  state.editingRoleId = person.id;
+  const drawer = ensureRoleEditor();
+  drawer.querySelector('#personnelRoleName').textContent = person.full_name || 'Ohne Namen';
+  drawer.querySelector('#personnelRoleError').textContent = '';
+  const roles = getRoleOptions();
+  const currentRole = person.public_role || 'Teilnehmende';
+  drawer.querySelector('#personnelRoleOptions').innerHTML = roles.map(role => `
+    <button class="personnel-role-choice ${role === currentRole ? 'active' : ''}" type="button" data-role="${escapeHtml(role)}">
+      ${escapeHtml(role)}
+    </button>
+  `).join('');
+  drawer.querySelectorAll('.personnel-role-choice').forEach(button => {
+    button.addEventListener('click', () => saveRole(button.dataset.role));
+  });
+  document.getElementById('personnelRoleBackdrop')?.classList.add('open');
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden', 'false');
+}
+
+function ensureRoleEditor() {
+  let drawer = document.getElementById('personnelRoleDrawer');
+  if (drawer) return drawer;
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="personnelRoleBackdrop" class="personnel-drawer-backdrop"></div>
+    <aside id="personnelRoleDrawer" class="personnel-drawer personnel-role-drawer" aria-hidden="true">
+      <div class="personnel-drawer-header">
+        <div>
+          <h3>Rolle aendern</h3>
+          <p><strong id="personnelRoleName"></strong></p>
+        </div>
+        <button id="personnelRoleClose" class="personnel-close" type="button" aria-label="Schliessen">x</button>
+      </div>
+      <div class="personnel-drawer-body personnel-role-body">
+        <div id="personnelRoleOptions" class="personnel-role-options full"></div>
+        <p id="personnelRoleError" class="personnel-form-error full" role="alert"></p>
+      </div>
+    </aside>
+  `);
+  drawer = document.getElementById('personnelRoleDrawer');
+  document.getElementById('personnelRoleBackdrop')?.addEventListener('click', closeRoleEditor);
+  document.getElementById('personnelRoleClose')?.addEventListener('click', closeRoleEditor);
+  return drawer;
+}
+
+function closeRoleEditor() {
+  state.editingRoleId = null;
+  document.getElementById('personnelRoleBackdrop')?.classList.remove('open');
+  const drawer = document.getElementById('personnelRoleDrawer');
+  drawer?.classList.remove('open');
+  drawer?.setAttribute('aria-hidden', 'true');
+}
+
+async function saveRole(role) {
+  if (!state.isManager || !state.client || !state.editingRoleId || !role) return;
+  const drawer = document.getElementById('personnelRoleDrawer');
+  const errorNode = drawer?.querySelector('#personnelRoleError');
+  if (errorNode) errorNode.textContent = '';
+  try {
+    const { error } = await state.client
+      .from('participants')
+      .update({ public_role: role })
+      .eq('id', state.editingRoleId);
+    if (error) throw error;
+    state.participants = state.participants.map(person => (
+      String(person.id) === String(state.editingRoleId) ? { ...person, public_role: role } : person
+    ));
+    closeRoleEditor();
+    renderDeployment();
+  } catch (error) {
+    if (errorNode) errorNode.textContent = `Speichern fehlgeschlagen: ${error.message || error}`;
+  }
+}
+
+function getRoleOptions() {
+  const existing = state.participants.map(person => person.public_role).filter(Boolean);
+  return [...new Set([...ROLE_PRESETS, ...existing])]
+    .sort((a, b) => roleRank(a) - roleRank(b) || String(a).localeCompare(String(b), 'de'));
 }
 
 function openDateEditor(participantId) {
@@ -449,15 +565,22 @@ async function saveDateRange(event) {
 }
 
 function exportPersonnelPdf() {
+  if (!state.isManager) {
+    window.alert('PDF-Export mit Kontaktdaten ist nur fuer berechtigte Rollen verfuegbar.');
+    return;
+  }
   const rows = getFilteredParticipants();
   const printedAt = new Date().toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
   const tableRows = rows.map(person => `
     <tr>
-      <td><strong>${escapeHtml(person.full_name || 'Ohne Namen')}</strong></td>
-      <td>${escapeHtml(person.public_role || 'Teilnehmende')}</td>
-      <td>${escapeHtml(prettyStatus(person.status))}</td>
-      <td>${escapeHtml(formatDate(person.availability_from))} - ${escapeHtml(formatDate(person.availability_to))}</td>
-      <td>${escapeHtml(shorten([person.availability_note, person.source_note].filter(Boolean).join(' - '), 220))}</td>
+      <td>
+        <strong>${escapeHtml(person.full_name || 'Ohne Namen')}</strong>
+        <span>${escapeHtml(person.public_role || 'Teilnehmende')}</span>
+      </td>
+      <td>${escapeHtml(privateFor(person.id).email || '-')}<br>${escapeHtml(privateFor(person.id).phone || '-')}</td>
+      <td><span class="status ${barColor(person.status)}">${escapeHtml(prettyStatus(person.status))}</span></td>
+      <td>${renderPrintTimeline(person)}</td>
+      <td>${escapeHtml(shorten([person.availability_note, person.source_note].filter(Boolean).join(' - '), 90))}</td>
     </tr>
   `).join('');
   const printWindow = window.open('', '_blank');
@@ -476,24 +599,38 @@ function exportPersonnelPdf() {
           header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #18324a; padding-bottom: 10px; margin-bottom: 14px; }
           h1 { margin: 0 0 5px; font-size: 21px; }
           p { margin: 0; color: #52677c; font-size: 11px; }
-          table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+          table { width: 100%; border-collapse: collapse; font-size: 9.6px; }
           th { text-align: left; background: #edf3f8; color: #17324a; border: 1px solid #c9d8e5; padding: 7px; }
-          td { vertical-align: top; border: 1px solid #d7e1ea; padding: 6px 7px; }
+          td { vertical-align: top; border: 1px solid #d7e1ea; padding: 5px 6px; }
+          td:first-child { width: 18%; }
+          td:nth-child(2) { width: 18%; }
+          td:nth-child(3) { width: 9%; }
+          td:nth-child(4) { width: 37%; }
+          td:nth-child(5) { width: 18%; color: #52677c; }
+          td strong, td span { display: block; }
           tr:nth-child(even) td { background: #f8fbfd; }
           .meta { text-align: right; white-space: nowrap; }
+          .print-timeline { position: relative; height: 18px; border: 1px solid #ccd8e4; border-radius: 999px; background: repeating-linear-gradient(to right, #f7fafc 0, #f7fafc calc(9.09% - 1px), #dce6ef calc(9.09% - 1px), #dce6ef 9.09%); overflow: hidden; }
+          .print-bar { position: absolute; top: 3px; height: 12px; border-radius: 999px; }
+          .print-dates { margin-top: 3px; color: #52677c; font-size: 8.5px; }
+          .status { display: inline-block; border-radius: 999px; color: #fff; padding: 3px 6px; font-weight: 700; }
+          .green { background: #2f855a; }
+          .blue { background: #2b6cb0; }
+          .orange { background: #c98216; }
+          .gray { background: #687587; }
         </style>
       </head>
       <body>
         <header>
           <div>
             <h1>Personaleinsatz Kerpen-Manheim 2026</h1>
-            <p>Gefilterte Ansicht aus der Web-App. Private Kontaktdaten und interne Notizen sind nicht enthalten.</p>
+            <p>Gefilterte Ansicht aus der Web-App mit Kontaktinformationen fuer berechtigte Rollen.</p>
           </div>
-          <p class="meta">Export: ${escapeHtml(printedAt)}<br>${rows.length} Personen</p>
+          <p class="meta">Export: ${escapeHtml(printedAt)}<br>${rows.length} Personen<br>27.07.2026 - 09.10.2026</p>
         </header>
         <table>
           <thead>
-            <tr><th>Name</th><th>Rolle</th><th>Status</th><th>Zeitraum</th><th>Hinweis</th></tr>
+            <tr><th>Person / Rolle</th><th>Kontakt</th><th>Status</th><th>Teilnahmezeitraum</th><th>Hinweis</th></tr>
           </thead>
           <tbody>${tableRows || '<tr><td colspan="5">Keine Personen fuer diese Auswahl.</td></tr>'}</tbody>
         </table>
@@ -501,6 +638,17 @@ function exportPersonnelPdf() {
       </body>
     </html>`);
   printWindow.document.close();
+}
+
+function renderPrintTimeline(person) {
+  const range = getRange(person);
+  if (!range.valid) return '<div class="print-dates">Zeitraum unklar / uneinheitlich</div>';
+  return `
+    <div class="print-timeline">
+      <div class="print-bar ${barColor(person.status)}" style="left:${range.left}%;width:${range.width}%"></div>
+    </div>
+    <div class="print-dates">${escapeHtml(formatDate(person.availability_from))} - ${escapeHtml(formatDate(person.availability_to))}</div>
+  `;
 }
 
 function noteText(person) {
