@@ -314,16 +314,45 @@ input[type="password"] {
   margin: 0;
 }
 
-.openpoint-delete-btn {
+.openpoint-archive-btn,
+.archive-action-btn {
   border-color: #f0b4b4;
   color: #a11f1f;
 }
 
-.openpoint-delete-btn:hover,
-.openpoint-delete-btn:focus-visible {
+.openpoint-archive-btn:hover,
+.openpoint-archive-btn:focus-visible,
+.archive-action-btn:hover,
+.archive-action-btn:focus-visible {
   background: #fff1f1;
   border-color: #d96b6b;
   color: #7f1515;
+}
+
+.archive-panel {
+  margin-top: 18px;
+}
+
+.archive-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.archive-list {
+  display: grid;
+  gap: 10px;
+}
+
+.archive-item {
+  display: grid;
+  gap: 8px;
+}
+
+.archive-item .item-head {
+  align-items: flex-start;
 }
 
 .calendar-grid {

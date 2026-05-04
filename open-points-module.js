@@ -39,6 +39,9 @@ const state = {
   profile: null,
   notes: [],
   tasks: [],
+  archivedTasks: new Set(),
+  archiveRows: [],
+  taskObserver: null,
   loaded: false,
   loading: false
 };
@@ -72,7 +75,12 @@ function initOpenPointsModule() {
   });
 
   els.form?.addEventListener('submit', onOpenPointSubmit);
+  window.addEventListener('manheim:archive-changed', () => {
+    state.loaded = false;
+    if (els.tab.classList.contains('active') && !state.loading) loadOpenPoints();
+  });
   markFinanceNotesOnSubmit();
+  initAdminArchiveFeatures();
 }
 
 function openOpenPointsTab() {
@@ -116,8 +124,8 @@ async function loadOpenPoints() {
     if (notesResult.error) throw notesResult.error;
     if (tasksResult.error) throw tasksResult.error;
 
-    state.notes = notesResult.data || [];
-    state.tasks = tasksResult.data || [];
+    state.notes = (notesResult.data || []).filter((note) => !note.is_archived);
+    state.tasks = (tasksResult.data || []).filter((task) => !task.is_archived);
     state.loaded = true;
     renderOpenPoints();
     setSyncState('Synchronisiert');
@@ -207,8 +215,8 @@ function renderOpenPoints() {
     ? filtered.map(openPointCard).join('')
     : '<div class="empty">Keine passenden offenen Punkte gefunden.</div>';
 
-  document.querySelectorAll('.openpoint-delete-btn').forEach((button) => {
-    button.addEventListener('click', onDeleteOpenPoint);
+  document.querySelectorAll('.openpoint-archive-btn').forEach((button) => {
+    button.addEventListener('click', onArchiveOpenPoint);
   });
 }
 
@@ -255,7 +263,7 @@ function getOpenPointItems() {
 
 function openPointCard(item) {
   const categoryLabel = CATEGORY_LABELS[item.category] || item.category || item.areaLabel;
-  const canDelete = isAdmin() && item.table === 'notes';
+  const canArchive = isAdmin();
   return `
     <article class="list-item openpoint-item">
       <div class="item-head">
@@ -268,7 +276,7 @@ function openPointCard(item) {
             <span class="status ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span>
           </div>
         </div>
-        ${canDelete ? `<button class="btn small danger openpoint-delete-btn" type="button" data-id="${escapeHtml(item.rawId)}">L&ouml;schen</button>` : ''}
+        ${canArchive ? `<button class="btn small danger openpoint-archive-btn" type="button" data-table="${escapeHtml(item.table)}" data-id="${escapeHtml(item.rawId)}">Archivieren</button>` : ''}
       </div>
       ${item.subcategory ? `<div class="muted">${escapeHtml(item.subcategory)}</div>` : ''}
       ${item.body ? `<p class="openpoint-text">${escapeHtml(item.body)}</p>` : ''}
@@ -276,26 +284,218 @@ function openPointCard(item) {
   `;
 }
 
-async function onDeleteOpenPoint(event) {
+async function onArchiveOpenPoint(event) {
   if (!isAdmin()) {
-    alert('Nur Admins koennen offene Punkte loeschen.');
+    alert('Nur Admins koennen offene Punkte archivieren.');
     return;
   }
   const id = event.currentTarget?.dataset?.id;
-  if (!id) return;
-  const confirmed = window.confirm('Diesen offenen Punkt wirklich loeschen?');
+  const table = event.currentTarget?.dataset?.table;
+  if (!id || !['notes', 'tasks'].includes(table)) return;
+  const confirmed = window.confirm('Diesen Eintrag wirklich archivieren? Er verschwindet aus der normalen Liste und bleibt im Admin-Archiv erhalten.');
   if (!confirmed) return;
 
   try {
     state.client = state.client || getClient();
-    setSyncState('Loesche ...');
-    const { error } = await state.client.from('notes').delete().eq('id', id);
+    setSyncState('Archiviere ...');
+    const { error } = await state.client.from(table).update({
+      is_archived: true,
+      archived_at: new Date().toISOString(),
+      archived_by: state.session?.user?.id || null
+    }).eq('id', id);
     if (error) throw error;
     state.loaded = false;
     await loadOpenPoints();
+    window.dispatchEvent(new CustomEvent('manheim:archive-changed'));
+    if (isAdmin()) await loadArchiveData();
   } catch (error) {
-    console.error('[open-points-module] delete failed', error);
-    alert('Punkt konnte nicht geloescht werden: ' + (error.message || error));
+    console.error('[open-points-module] archive failed', error);
+    alert('Punkt konnte nicht archiviert werden: ' + (error.message || error));
+    setSyncState('Fehler');
+  }
+}
+
+async function initAdminArchiveFeatures() {
+  try {
+    state.client = state.client || getClient();
+    const sessionData = await getSession(state.client);
+    state.session = sessionData?.session || null;
+    if (!state.session?.user?.id) return;
+    await loadProfile();
+    if (!isAdmin()) return;
+    ensureArchivePanel();
+    await loadArchiveData();
+    observeTaskList();
+  } catch (error) {
+    console.error('[open-points-module] archive init failed', error);
+  }
+}
+
+async function loadArchiveData() {
+  if (!isAdmin()) return;
+  const [tasksResult, notesResult] = await Promise.all([
+    state.client.from('tasks').select('*').eq('is_archived', true).order('archived_at', { ascending: false, nullsFirst: false }),
+    state.client.from('notes').select('*').eq('is_archived', true).order('archived_at', { ascending: false, nullsFirst: false })
+  ]);
+  if (tasksResult.error) throw tasksResult.error;
+  if (notesResult.error) throw notesResult.error;
+
+  const tasks = (tasksResult.data || []).map((task) => ({ ...task, archive_table: 'tasks', archive_type: 'Aufgabe' }));
+  const notes = (notesResult.data || []).map((note) => ({ ...note, archive_table: 'notes', archive_type: note.note_type === 'idea' ? 'Idee' : 'Notiz' }));
+  state.archiveRows = [...tasks, ...notes].sort((a, b) => String(b.archived_at || '').localeCompare(String(a.archived_at || '')));
+  state.archivedTasks = new Set(tasks.map((task) => String(task.id)));
+  hideArchivedTasksInList();
+  renderArchivePanel();
+}
+
+function observeTaskList() {
+  const taskList = document.getElementById('taskList');
+  if (!taskList) return;
+  state.taskObserver?.disconnect();
+  state.taskObserver = new MutationObserver(() => {
+    attachTaskArchiveButtons();
+    hideArchivedTasksInList();
+  });
+  state.taskObserver.observe(taskList, { childList: true, subtree: true });
+  attachTaskArchiveButtons();
+  hideArchivedTasksInList();
+}
+
+function attachTaskArchiveButtons() {
+  const taskList = document.getElementById('taskList');
+  if (!taskList || !isAdmin()) return;
+  taskList.querySelectorAll('.task-status-btn').forEach((statusButton) => {
+    const taskId = statusButton.dataset.id;
+    if (!taskId || state.archivedTasks.has(String(taskId))) return;
+    const actionRow = statusButton.closest('.action-row');
+    if (!actionRow || actionRow.querySelector(`.task-archive-btn[data-id="${taskId}"]`)) return;
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'btn small danger archive-action-btn task-archive-btn';
+    button.dataset.id = taskId;
+    button.textContent = 'Archivieren';
+    button.addEventListener('click', onArchiveTask);
+    actionRow.appendChild(button);
+  });
+}
+
+function hideArchivedTasksInList() {
+  const taskList = document.getElementById('taskList');
+  if (!taskList || !state.archivedTasks.size) return;
+  taskList.querySelectorAll('.task-status-btn').forEach((statusButton) => {
+    if (state.archivedTasks.has(String(statusButton.dataset.id))) {
+      statusButton.closest('.list-item')?.remove();
+    }
+  });
+}
+
+async function onArchiveTask(event) {
+  const id = event.currentTarget?.dataset?.id;
+  if (!id || !isAdmin()) return;
+  const confirmed = window.confirm('Diese Aufgabe wirklich archivieren? Sie verschwindet aus der Aufgabenliste und bleibt im Admin-Archiv erhalten.');
+  if (!confirmed) return;
+  try {
+    setSyncState('Archiviere ...');
+    const { error } = await state.client.from('tasks').update({
+      is_archived: true,
+      archived_at: new Date().toISOString(),
+      archived_by: state.session.user.id
+    }).eq('id', id);
+    if (error) throw error;
+    await loadArchiveData();
+    window.dispatchEvent(new CustomEvent('manheim:archive-changed'));
+    setSyncState('Synchronisiert');
+  } catch (error) {
+    console.error('[open-points-module] task archive failed', error);
+    alert('Aufgabe konnte nicht archiviert werden: ' + (error.message || error));
+    setSyncState('Fehler');
+  }
+}
+
+function ensureArchivePanel() {
+  const adminTab = document.getElementById('adminTab');
+  if (!adminTab || document.getElementById('archivePanel')) return;
+  const panel = document.createElement('section');
+  panel.id = 'archivePanel';
+  panel.className = 'panel archive-panel';
+  panel.innerHTML = `
+    <div class="panel-head">
+      <h3>Archiv</h3>
+      <span class="muted">nur Admin</span>
+    </div>
+    <div class="archive-toolbar">
+      <select id="archiveTypeFilter">
+        <option value="alle">Alle Eintr&auml;ge</option>
+        <option value="tasks">Aufgaben</option>
+        <option value="notes">Notizen / offene Punkte</option>
+      </select>
+      <input id="archiveSearch" type="search" placeholder="Archiv durchsuchen" />
+    </div>
+    <div id="archiveList" class="archive-list"></div>
+  `;
+  adminTab.appendChild(panel);
+  document.getElementById('archiveTypeFilter')?.addEventListener('change', renderArchivePanel);
+  document.getElementById('archiveSearch')?.addEventListener('input', renderArchivePanel);
+}
+
+function renderArchivePanel() {
+  const list = document.getElementById('archiveList');
+  if (!list) return;
+  const typeFilter = document.getElementById('archiveTypeFilter')?.value || 'alle';
+  const query = (document.getElementById('archiveSearch')?.value || '').trim().toLowerCase();
+  const filtered = state.archiveRows.filter((row) => {
+    const typeMatches = typeFilter === 'alle' || row.archive_table === typeFilter;
+    const text = `${row.title || ''} ${row.description || ''} ${row.body || ''} ${row.subcategory || ''}`.toLowerCase();
+    return typeMatches && (!query || text.includes(query));
+  });
+
+  list.innerHTML = filtered.length
+    ? filtered.map(archiveCard).join('')
+    : '<div class="empty">Keine archivierten Eintr&auml;ge vorhanden.</div>';
+  list.querySelectorAll('.archive-restore-btn').forEach((button) => button.addEventListener('click', onRestoreArchived));
+}
+
+function archiveCard(row) {
+  const text = row.description || row.body || '';
+  return `
+    <article class="list-item archive-item">
+      <div class="item-head">
+        <div>
+          <div class="item-title">${escapeHtml(row.title || 'Ohne Titel')}</div>
+          <div class="openpoint-meta">
+            <span class="chip">${escapeHtml(row.archive_type)}</span>
+            <span class="status ${escapeHtml(row.status || 'offen')}">${escapeHtml(row.status || 'offen')}</span>
+            <span class="muted">${row.archived_at ? `archiviert: ${formatDateTime(row.archived_at)}` : 'archiviert'}</span>
+          </div>
+        </div>
+        <button class="btn small archive-restore-btn" type="button" data-table="${escapeHtml(row.archive_table)}" data-id="${escapeHtml(row.id)}">Wiederherstellen</button>
+      </div>
+      ${row.subcategory ? `<div class="muted">${escapeHtml(row.subcategory)}</div>` : ''}
+      ${text ? `<p class="openpoint-text">${escapeHtml(text)}</p>` : ''}
+    </article>
+  `;
+}
+
+async function onRestoreArchived(event) {
+  const table = event.currentTarget?.dataset?.table;
+  const id = event.currentTarget?.dataset?.id;
+  if (!isAdmin() || !id || !['notes', 'tasks'].includes(table)) return;
+  try {
+    setSyncState('Stelle wieder her ...');
+    const { error } = await state.client.from(table).update({
+      is_archived: false,
+      archived_at: null,
+      archived_by: null,
+      archive_reason: null
+    }).eq('id', id);
+    if (error) throw error;
+    await loadArchiveData();
+    state.loaded = false;
+    window.dispatchEvent(new CustomEvent('manheim:archive-changed'));
+    setSyncState('Synchronisiert');
+  } catch (error) {
+    console.error('[open-points-module] restore failed', error);
+    alert('Eintrag konnte nicht wiederhergestellt werden: ' + (error.message || error));
     setSyncState('Fehler');
   }
 }
@@ -379,6 +579,11 @@ function formatDate(value) {
   if (!value) return '';
   const date = new Date(`${value}T12:00:00`);
   return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString('de-DE');
+}
+
+function formatDateTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('de-DE');
 }
 
 function escapeHtml(value) {
