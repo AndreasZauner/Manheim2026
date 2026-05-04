@@ -185,7 +185,7 @@ function renderChartCard(daily) {
 }
 
 function renderSvg(daily) {
-  const width = 540;
+  const width = 620;
   const height = 172;
   const margin = { top: 18, right: 24, bottom: 28, left: 34 };
   const chartW = width - margin.left - margin.right;
@@ -365,10 +365,10 @@ function injectStyles() {
       min-width: 260px;
     }
     .personnel-attendance-chart.chart-card {
-      flex: 0 1 70%;
-      max-width: 70%;
-      min-width: 360px;
-      margin: 0 4px 0 12px;
+      flex: 0 0 clamp(540px, 39vw, 650px);
+      max-width: clamp(540px, 39vw, 650px);
+      min-width: 520px;
+      margin: 0 8px 0 8px;
       background: #fffaf2;
       border: 1px solid #e1d6c7;
       border-radius: 16px;
