@@ -1,0 +1,13 @@
+.git
+.github
+.assetsignore
+supabase
+node_modules
+README.md
+CODEX_STARTPROMPT.md
+*.sql
+*.md
+*.zip
+*.log
+config.example.js
+wrangler.jsonc
