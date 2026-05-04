@@ -185,9 +185,9 @@ function renderChartCard(daily) {
 }
 
 function renderSvg(daily) {
-  const width = 760;
+  const width = 540;
   const height = 172;
-  const margin = { top: 18, right: 26, bottom: 28, left: 34 };
+  const margin = { top: 18, right: 24, bottom: 28, left: 34 };
   const chartW = width - margin.left - margin.right;
   const chartH = height - margin.top - margin.bottom;
   const maxY = Math.max(MAX_Y, Math.ceil(Math.max(...daily.map(day => day.count), TARGET_ATTENDANCE) / 3) * 3);
@@ -195,21 +195,14 @@ function renderSvg(daily) {
   const x = index => margin.left + (index / Math.max(daily.length - 1, 1)) * chartW;
   const y = value => margin.top + chartH - ((value - minY) / (maxY - minY)) * chartH;
   const yTicks = buildTicks(maxY).filter(tick => tick === 0 || tick === CRITICAL_ATTENDANCE || tick === TARGET_ATTENDANCE || tick === maxY);
-  const points = daily.map((day, index) => [x(index), y(day.count)]);
-  const areaPath = [
-    `M ${points[0][0].toFixed(1)} ${y(0).toFixed(1)}`,
-    ...points.map(([px, py]) => `L ${px.toFixed(1)} ${py.toFixed(1)}`),
-    `L ${points[points.length - 1][0].toFixed(1)} ${y(0).toFixed(1)}`,
-    'Z'
-  ].join(' ');
-  const linePath = points.map(([px, py], index) => `${index === 0 ? 'M' : 'L'} ${px.toFixed(1)} ${py.toFixed(1)}`).join(' ');
   const criticalTop = y(CRITICAL_ATTENDANCE);
   const dateStep = daily.length > 55 ? 14 : daily.length > 28 ? 7 : 4;
+  const lineSegments = buildColoredLineSegments(daily, x, y);
 
   return `
     <svg class="attendance-chart" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="attendanceChartTitle attendanceChartDesc">
       <title id="attendanceChartTitle">Liniendiagramm der taeglichen Personal-Anwesenheit</title>
-      <desc id="attendanceChartDesc">Zeitachse mit Anzahl anwesender Mitarbeiter pro Tag, Zielmarke bei 10 und kritischem Bereich unter 6.</desc>
+      <desc id="attendanceChartDesc">Zeitachse mit Anzahl anwesender Mitarbeiter pro Tag, Zielmarke bei 10 und kritischem Bereich bis 6.</desc>
       ${yTicks.map(tick => `
         <line x1="${margin.left}" x2="${width - margin.right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}" class="grid-line"></line>
         <text x="${margin.left - 9}" y="${(y(tick) + 3).toFixed(1)}" text-anchor="end" class="tick-label">${tick}</text>
@@ -218,12 +211,58 @@ function renderSvg(daily) {
       <line x1="${margin.left}" x2="${width - margin.right}" y1="${y(CRITICAL_ATTENDANCE).toFixed(1)}" y2="${y(CRITICAL_ATTENDANCE).toFixed(1)}" class="critical-boundary"></line>
       <line x1="${margin.left}" x2="${width - margin.right}" y1="${y(TARGET_ATTENDANCE).toFixed(1)}" y2="${y(TARGET_ATTENDANCE).toFixed(1)}" class="target-line"></line>
       <text x="${width - margin.right}" y="${(y(TARGET_ATTENDANCE) - 5).toFixed(1)}" text-anchor="end" class="target-text">Ziel 10</text>
-      <path d="${areaPath}" class="attendance-area"></path>
-      <path d="${linePath}" class="attendance-line"></path>
+      ${lineSegments.map(segment => `<path d="${segment.path}" class="attendance-line ${segment.color}"></path>`).join('')}
       ${daily.map((day, index) => renderDateTick(day, index, daily.length, x, height, margin, dateStep)).join('')}
-      ${daily.map((day, index) => renderPoint(day, index, x, y)).join('')}
     </svg>
   `;
+}
+
+function buildColoredLineSegments(daily, x, y) {
+  const segments = [];
+  for (let index = 1; index < daily.length; index += 1) {
+    const start = pointForDay(daily[index - 1], index - 1, x, y);
+    const end = pointForDay(daily[index], index, x, y);
+    const breakpoints = [start];
+    [CRITICAL_ATTENDANCE, TARGET_ATTENDANCE].forEach(threshold => {
+      if (crossesThreshold(start.count, end.count, threshold)) {
+        const ratio = (threshold - start.count) / (end.count - start.count);
+        breakpoints.push({
+          x: start.x + (end.x - start.x) * ratio,
+          y: y(threshold),
+          count: threshold,
+          ratio
+        });
+      }
+    });
+    breakpoints.push({ ...end, ratio: 1 });
+    breakpoints
+      .sort((a, b) => (a.ratio ?? 0) - (b.ratio ?? 0))
+      .slice(0, -1)
+      .forEach((point, segmentIndex) => {
+        const next = breakpoints[segmentIndex + 1];
+        if (!next) return;
+        const midpoint = (point.count + next.count) / 2;
+        segments.push({
+          color: lineColorClass(midpoint),
+          path: `M ${point.x.toFixed(1)} ${point.y.toFixed(1)} L ${next.x.toFixed(1)} ${next.y.toFixed(1)}`
+        });
+      });
+  }
+  return segments;
+}
+
+function pointForDay(day, index, x, y) {
+  return { x: x(index), y: y(day.count), count: day.count, ratio: 0 };
+}
+
+function crossesThreshold(start, end, threshold) {
+  return (start < threshold && end > threshold) || (start > threshold && end < threshold);
+}
+
+function lineColorClass(value) {
+  if (value <= CRITICAL_ATTENDANCE) return 'line-critical';
+  if (value >= TARGET_ATTENDANCE) return 'line-target';
+  return 'line-normal';
 }
 
 function renderDateTick(day, index, totalDays, x, height, margin, step) {
@@ -231,22 +270,11 @@ function renderDateTick(day, index, totalDays, x, height, margin, step) {
   return `<text x="${x(index).toFixed(1)}" y="${height - margin.bottom + 18}" text-anchor="middle" class="tick-label x">${escapeHtml(day.label)}</text>`;
 }
 
-function renderPoint(day, index, x, y) {
-  const classes = ['point'];
-  if (day.count < CRITICAL_ATTENDANCE) classes.push('critical');
-  if (day.count >= TARGET_ATTENDANCE) classes.push('target-ok');
-  return `
-    <circle cx="${x(index).toFixed(1)}" cy="${y(day.count).toFixed(1)}" r="3.2" class="${classes.join(' ')}" tabindex="0">
-      <title>${escapeHtml(day.count)} Personen am ${escapeHtml(day.label)}</title>
-    </circle>
-  `;
-}
-
 function calculateStats(daily) {
   const counts = daily.map(day => day.count);
   const max = Math.max(...counts, 0);
   const avg = counts.length ? (counts.reduce((sum, value) => sum + value, 0) / counts.length).toFixed(1).replace('.', ',') : '0';
-  const criticalDays = counts.filter(value => value < CRITICAL_ATTENDANCE).length;
+  const criticalDays = counts.filter(value => value <= CRITICAL_ATTENDANCE).length;
   return { max, avg, criticalDays };
 }
 
@@ -337,8 +365,9 @@ function injectStyles() {
       min-width: 260px;
     }
     .personnel-attendance-chart.chart-card {
-      flex: 1 1 auto;
-      min-width: 420px;
+      flex: 0 1 70%;
+      max-width: 70%;
+      min-width: 360px;
       margin: 0 4px 0 12px;
       background: #fffaf2;
       border: 1px solid #e1d6c7;
@@ -417,18 +446,25 @@ function injectStyles() {
     }
     .personnel-attendance-chart .attendance-line {
       fill: none;
-      stroke: #2563eb;
-      stroke-width: 3;
+      stroke-width: 3.2;
       stroke-linecap: round;
       stroke-linejoin: round;
       filter: drop-shadow(0 5px 7px rgba(37, 99, 235, 0.18));
     }
-    .personnel-attendance-chart .attendance-area {
-      fill: rgba(37, 99, 235, 0.14);
+    .personnel-attendance-chart .attendance-line.line-normal {
+      stroke: #2563eb;
+    }
+    .personnel-attendance-chart .attendance-line.line-target {
+      stroke: #16a34a;
+      filter: drop-shadow(0 5px 7px rgba(22, 163, 74, 0.16));
+    }
+    .personnel-attendance-chart .attendance-line.line-critical {
+      stroke: #dc2626;
+      filter: drop-shadow(0 5px 7px rgba(220, 38, 38, 0.14));
     }
     .personnel-attendance-chart .target-line {
       stroke: #16a34a;
-      stroke-width: 2.2;
+      stroke-width: 2;
       stroke-dasharray: 7 6;
       stroke-linecap: round;
     }
@@ -444,19 +480,6 @@ function injectStyles() {
       fill: #166534;
       font-size: 10px;
       font-weight: 800;
-    }
-    .personnel-attendance-chart .point {
-      fill: #fffdf8;
-      stroke: #2563eb;
-      stroke-width: 2.2;
-    }
-    .personnel-attendance-chart .point.critical {
-      stroke: #dc2626;
-      fill: #fff4f4;
-    }
-    .personnel-attendance-chart .point.target-ok {
-      stroke: #16a34a;
-      fill: #f0fdf4;
     }
     .personnel-attendance-chart .loading-wrap,
     .personnel-attendance-chart .empty-wrap {
@@ -486,6 +509,7 @@ function injectStyles() {
       .personnel-attendance-chart.chart-card {
         order: 3;
         flex-basis: 100%;
+        max-width: none;
         min-width: 0;
         margin: 4px 0 0;
       }
