@@ -183,6 +183,22 @@
   font-size: .82rem;
 }
 
+.personnel-role-edit-btn {
+  justify-self: start;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-weight: 800;
+}
+
+.personnel-role-edit-btn:hover,
+.personnel-role-edit-btn:focus-visible {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .personnel-meta {
   display: flex;
   flex-wrap: wrap;
@@ -432,6 +448,30 @@
   color: #b42318;
   font-size: .84rem;
   font-weight: 800;
+}
+
+.personnel-role-options {
+  display: grid;
+  gap: 8px;
+}
+
+.personnel-role-choice {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  border-radius: 10px;
+  padding: 10px 12px;
+  text-align: left;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.personnel-role-choice:hover,
+.personnel-role-choice:focus-visible,
+.personnel-role-choice.active {
+  border-color: var(--accent);
+  background: #edf5ff;
+  color: #174f8a;
 }
 
 @media (max-width: 1100px) {
