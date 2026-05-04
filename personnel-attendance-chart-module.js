@@ -118,7 +118,7 @@ function ensureChartHost() {
     host = document.createElement('section');
     host.id = 'personnelAttendanceChart';
     host.className = 'personnel-attendance-chart chart-card';
-    host.setAttribute('aria-label', 'Diagramm zur taeglichen Anwesenheit des Personals');
+    host.setAttribute('aria-label', 'Diagramm zur täglichen Anwesenheit des Personals');
   }
 
   if (host.parentElement !== topbar || host.nextElementSibling !== sync) topbar.insertBefore(host, sync);
@@ -170,7 +170,7 @@ function renderChartCard(daily) {
     <div class="chart-head">
       <div>
         <div class="eyebrow">Personal · Anwesenheit</div>
-        <strong>Taegliche Personalstaerke</strong>
+        <strong>Tägliche Personalstärke</strong>
       </div>
       <div class="kpis" aria-label="Kennzahlen">
         <span><strong>${stats.avg}</strong> Ø</span>
@@ -201,7 +201,7 @@ function renderSvg(daily) {
 
   return `
     <svg class="attendance-chart" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="attendanceChartTitle attendanceChartDesc">
-      <title id="attendanceChartTitle">Liniendiagramm der taeglichen Personal-Anwesenheit</title>
+      <title id="attendanceChartTitle">Liniendiagramm der täglichen Personal-Anwesenheit</title>
       <desc id="attendanceChartDesc">Zeitachse mit Anzahl anwesender Mitarbeiter pro Tag, Zielmarke bei 10 und kritischem Bereich bis 6.</desc>
       ${yTicks.map(tick => `
         <line x1="${margin.left}" x2="${width - margin.right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}" class="grid-line"></line>
@@ -361,14 +361,19 @@ function injectStyles() {
       align-items: center;
     }
     .topbar > div:first-child {
-      flex: 0 0 auto;
-      min-width: 260px;
+      flex: 0 0 420px;
+      min-width: 380px;
+    }
+    .topbar > div:first-child p {
+      margin-top: 4px;
+      line-height: 1.25;
+      white-space: nowrap;
     }
     .personnel-attendance-chart.chart-card {
       flex: 0 0 clamp(540px, 39vw, 650px);
       max-width: clamp(540px, 39vw, 650px);
       min-width: 520px;
-      margin: 0 8px 0 8px;
+      margin: 0 8px 0 auto;
       background: #fffaf2;
       border: 1px solid #e1d6c7;
       border-radius: 16px;
@@ -505,6 +510,10 @@ function injectStyles() {
       }
       .topbar > div:first-child {
         min-width: 0;
+        flex-basis: auto;
+      }
+      .topbar > div:first-child p {
+        white-space: normal;
       }
       .personnel-attendance-chart.chart-card {
         order: 3;
