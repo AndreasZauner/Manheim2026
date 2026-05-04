@@ -1,5 +1,6 @@
 .git
 .github
+.assetsignore
 supabase
 node_modules
 README.md
