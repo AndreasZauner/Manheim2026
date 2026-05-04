@@ -299,6 +299,10 @@
 .personnel-bar.orange { background: linear-gradient(90deg, #c98216, #dd9c2f); }
 .personnel-bar.gray { background: linear-gradient(90deg, #687587, #7d8aa0); }
 
+.personnel-bar-segment {
+  min-width: 10px;
+}
+
 .personnel-unclear,
 .personnel-empty {
   border: 1px dashed #d39a40;
@@ -442,6 +446,61 @@
   flex: 1;
 }
 
+.personnel-date-slots {
+  display: grid;
+  gap: 12px;
+}
+
+.personnel-date-slot {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #f8fbfd;
+}
+
+.personnel-date-slot-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.personnel-date-slot-head strong {
+  font-size: .86rem;
+  color: var(--text);
+}
+
+.personnel-add-slot-btn,
+.personnel-remove-slot {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.personnel-add-slot-btn {
+  min-height: 38px;
+  color: var(--accent);
+}
+
+.personnel-add-slot-btn:hover,
+.personnel-add-slot-btn:focus-visible {
+  border-color: var(--accent);
+  background: #edf5ff;
+}
+
+.personnel-remove-slot {
+  padding: 5px 8px;
+  color: #b42318;
+  font-size: .72rem;
+}
+
 .personnel-form-error {
   margin: 0;
   min-height: 18px;
@@ -493,6 +552,10 @@
   }
 
   .personnel-drawer-body {
+    grid-template-columns: 1fr;
+  }
+
+  .personnel-date-slot {
     grid-template-columns: 1fr;
   }
 }
