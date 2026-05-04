@@ -4,13 +4,12 @@ const PROJECT_START = new Date(2026, 6, 27);
 const PROJECT_END = new Date(2026, 9, 9);
 const TARGET_ATTENDANCE = 10;
 const CRITICAL_ATTENDANCE = 6;
+const MAX_Y = 15;
 
 const state = {
   client: null,
   loading: false,
-  installed: false,
   participants: [],
-  lastError: null,
   renderTimer: null
 };
 
@@ -23,7 +22,6 @@ if (document.readyState === 'loading') {
 function installPersonnelAttendanceChart() {
   if (window.__personnelAttendanceChartInstalled) return;
   window.__personnelAttendanceChartInstalled = true;
-  state.installed = true;
   setupSupabase();
   injectStyles();
   bindUiEvents();
@@ -41,13 +39,10 @@ function setupSupabase() {
   state.client.auth.onAuthStateChange(event => {
     if (event === 'SIGNED_OUT') {
       state.participants = [];
-      state.lastError = null;
       removeChart();
       return;
     }
-    if (['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED', 'INITIAL_SESSION'].includes(event)) {
-      scheduleRender(700);
-    }
+    if (['SIGNED_IN', 'TOKEN_REFRESHED', 'USER_UPDATED', 'INITIAL_SESSION'].includes(event)) scheduleRender(700);
   });
 }
 
@@ -55,9 +50,9 @@ function bindUiEvents() {
   document.querySelector('.nav-btn[data-tab="participants"]')?.addEventListener('click', () => scheduleRender(120));
   document.getElementById('refreshButton')?.addEventListener('click', () => scheduleRender(1000));
   document.addEventListener('click', event => {
-    if (event.target?.closest?.('.participant-planning-tab')) scheduleRender(120);
+    if (event.target?.closest?.('.participant-planning-tab')) scheduleRender(140);
   });
-  window.addEventListener('resize', () => scheduleRender(100));
+  window.addEventListener('resize', () => scheduleRender(120));
 }
 
 function scheduleRender(delay = 0) {
@@ -70,10 +65,11 @@ async function renderChart() {
     hideChart();
     return;
   }
+
   const host = ensureChartHost();
   if (!host) return;
-
   host.classList.remove('hidden');
+
   if (!state.client) {
     host.innerHTML = renderEmpty('Keine Supabase-Konfiguration');
     return;
@@ -83,10 +79,9 @@ async function renderChart() {
   try {
     await loadParticipants();
     const daily = buildDailySeries(state.participants);
-    host.innerHTML = renderSvgChart(daily);
+    host.innerHTML = renderChartCard(daily);
   } catch (error) {
     console.error('Anwesenheitsdiagramm konnte nicht geladen werden', error);
-    state.lastError = error;
     host.innerHTML = renderEmpty('Anwesenheit konnte nicht geladen werden');
   }
 }
@@ -108,24 +103,27 @@ async function loadParticipants() {
       .order('full_name');
     if (error) throw error;
     state.participants = data || [];
-    state.lastError = null;
   } finally {
     state.loading = false;
   }
 }
 
 function ensureChartHost() {
-  const topbar = document.querySelector('.topbar');
-  const sync = document.querySelector('.topbar-right');
-  if (!topbar || !sync) return null;
+  const tab = document.getElementById('participantsTab');
+  if (!tab) return null;
+
   let host = document.getElementById('personnelAttendanceChart');
   if (!host) {
     host = document.createElement('section');
     host.id = 'personnelAttendanceChart';
-    host.className = 'personnel-attendance-chart';
-    host.setAttribute('aria-label', 'Anwesenheitsentwicklung im Grabungszeitraum');
-    topbar.insertBefore(host, sync);
+    host.className = 'personnel-attendance-chart chart-card';
+    host.setAttribute('aria-label', 'Diagramm zur taeglichen Anwesenheit des Personals');
   }
+
+  const tabs = document.getElementById('participantPlanningTabs');
+  const sectionHead = tab.querySelector('.section-head');
+  const anchor = tabs || sectionHead;
+  if (anchor && host.previousElementSibling !== anchor) anchor.insertAdjacentElement('afterend', host);
   return host;
 }
 
@@ -160,59 +158,103 @@ function eachProjectDay() {
     const copy = new Date(date);
     result.push({
       date: copy,
-      key: dateKey(copy),
       label: copy.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })
     });
   }
   return result;
 }
 
-function renderSvgChart(daily) {
+function renderChartCard(daily) {
   if (!daily.length) return renderEmpty('Noch keine Zeitachse vorhanden');
 
-  const width = 430;
-  const height = 152;
-  const pad = { left: 28, right: 12, top: 14, bottom: 24 };
-  const plotWidth = width - pad.left - pad.right;
-  const plotHeight = height - pad.top - pad.bottom;
-  const maxCount = Math.max(TARGET_ATTENDANCE + 2, ...daily.map(day => day.count), 1);
-  const y = value => pad.top + plotHeight - (value / maxCount) * plotHeight;
-  const x = index => pad.left + (index / Math.max(daily.length - 1, 1)) * plotWidth;
-  const linePoints = daily.map((day, index) => `${x(index).toFixed(1)},${y(day.count).toFixed(1)}`).join(' ');
-  const areaPoints = `${pad.left},${pad.top + plotHeight} ${linePoints} ${pad.left + plotWidth},${pad.top + plotHeight}`;
-  const criticalY = y(CRITICAL_ATTENDANCE);
-  const targetY = y(TARGET_ATTENDANCE);
   const stats = calculateStats(daily);
-  const ticks = [0, CRITICAL_ATTENDANCE, TARGET_ATTENDANCE, maxCount].filter((value, index, list) => list.indexOf(value) === index);
-  const highlightPoints = pickHighlightPoints(daily);
+  return `
+    <div class="chart-head">
+      <div>
+        <div class="eyebrow">Personal · Anwesenheit</div>
+        <h3>Taegliche Personalstaerke im Zeitverlauf</h3>
+        <p class="subtitle">
+          Die Linie zeigt, wie viele Mitarbeiter pro Tag anwesend sind. Die gruene Linie markiert die Zielstaerke von 10 Personen;
+          der rot hinterlegte Bereich zeigt kritisch niedrige Besetzung unter 6 Personen.
+        </p>
+      </div>
+      <div class="kpis" aria-label="Kennzahlen">
+        <div class="kpi"><strong>${stats.avg}</strong><span>Ø Personen</span></div>
+        <div class="kpi"><strong>${stats.max}</strong><span>Maximum</span></div>
+        <div class="kpi"><strong>${stats.criticalDays}</strong><span>kritische Tage</span></div>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="swatch"></span> Anwesenheit</span>
+      <span class="legend-item"><span class="swatch target"></span> Zielmarke: 10 Personen</span>
+      <span class="legend-item"><span class="swatch critical"></span> Kritisch: unter 6 Personen</span>
+    </div>
+    <div class="chart-wrap">
+      ${renderSvg(daily)}
+    </div>
+    <p class="note">Jeder Tageswert entspricht der Anzahl der Personen, die an diesem Datum laut Zeitraum Von/Bis und Status geplant anwesend waeren.</p>
+  `;
+}
+
+function renderSvg(daily) {
+  const width = 1100;
+  const height = 430;
+  const margin = { top: 32, right: 38, bottom: 58, left: 54 };
+  const chartW = width - margin.left - margin.right;
+  const chartH = height - margin.top - margin.bottom;
+  const maxY = Math.max(MAX_Y, Math.ceil(Math.max(...daily.map(day => day.count), TARGET_ATTENDANCE) / 3) * 3);
+  const minY = 0;
+  const x = index => margin.left + (index / Math.max(daily.length - 1, 1)) * chartW;
+  const y = value => margin.top + chartH - ((value - minY) / (maxY - minY)) * chartH;
+  const yTicks = buildTicks(maxY);
+  const points = daily.map((day, index) => [x(index), y(day.count)]);
+  const areaPath = [
+    `M ${points[0][0].toFixed(1)} ${y(0).toFixed(1)}`,
+    ...points.map(([px, py]) => `L ${px.toFixed(1)} ${py.toFixed(1)}`),
+    `L ${points[points.length - 1][0].toFixed(1)} ${y(0).toFixed(1)}`,
+    'Z'
+  ].join(' ');
+  const linePath = points.map(([px, py], index) => `${index === 0 ? 'M' : 'L'} ${px.toFixed(1)} ${py.toFixed(1)}`).join(' ');
+  const criticalTop = y(CRITICAL_ATTENDANCE);
+  const dateStep = daily.length > 55 ? 7 : daily.length > 28 ? 4 : 2;
 
   return `
-    <div class="personnel-attendance-head">
-      <div>
-        <strong>Anwesenheit</strong>
-        <span>${escapeHtml(stats.trendLabel)}</span>
-      </div>
-      <div class="personnel-attendance-stats">
-        <span>Max ${stats.max}</span>
-        <span>Ø ${stats.avg}</span>
-      </div>
-    </div>
-    <svg class="personnel-attendance-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="Anwesenheit pro Tag mit Zielmarke 10 Personen">
-      <rect x="${pad.left}" y="${criticalY.toFixed(1)}" width="${plotWidth}" height="${(pad.top + plotHeight - criticalY).toFixed(1)}" class="critical-band"></rect>
-      ${ticks.map(value => `<line x1="${pad.left}" x2="${pad.left + plotWidth}" y1="${y(value).toFixed(1)}" y2="${y(value).toFixed(1)}" class="grid-line"></line>`).join('')}
-      <line x1="${pad.left}" x2="${pad.left + plotWidth}" y1="${targetY.toFixed(1)}" y2="${targetY.toFixed(1)}" class="target-line"></line>
-      <text x="${pad.left + plotWidth - 2}" y="${(targetY - 4).toFixed(1)}" text-anchor="end" class="target-label">Ziel 10</text>
-      <polyline points="${areaPoints}" class="attendance-area"></polyline>
-      <polyline points="${linePoints}" class="attendance-line"></polyline>
-      ${highlightPoints.map(point => `<circle cx="${x(point.index).toFixed(1)}" cy="${y(point.count).toFixed(1)}" r="3.2" class="attendance-dot"><title>${escapeHtml(point.label)}: ${point.count} Personen</title></circle>`).join('')}
-      ${ticks.map(value => `<text x="${pad.left - 7}" y="${(y(value) + 3).toFixed(1)}" text-anchor="end" class="axis-label">${value}</text>`).join('')}
-      <text x="${pad.left}" y="${height - 5}" class="axis-label">27.07.</text>
-      <text x="${pad.left + plotWidth}" y="${height - 5}" text-anchor="end" class="axis-label">09.10.</text>
+    <svg class="attendance-chart" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="attendanceChartTitle attendanceChartDesc">
+      <title id="attendanceChartTitle">Liniendiagramm der taeglichen Personal-Anwesenheit</title>
+      <desc id="attendanceChartDesc">Zeitachse mit Anzahl anwesender Mitarbeiter pro Tag, Zielmarke bei 10 und kritischem Bereich unter 6.</desc>
+      ${yTicks.map(tick => `
+        <line x1="${margin.left}" x2="${width - margin.right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}" class="grid-line"></line>
+        <text x="${margin.left - 12}" y="${(y(tick) + 4).toFixed(1)}" text-anchor="end" class="tick-label">${tick}</text>
+      `).join('')}
+      <text x="${margin.left}" y="18" class="axis-title">Anwesende Personen</text>
+      <line x1="${margin.left}" y1="${margin.top}" x2="${margin.left}" y2="${height - margin.bottom}" class="axis-line"></line>
+      <line x1="${margin.left}" y1="${height - margin.bottom}" x2="${width - margin.right}" y2="${height - margin.bottom}" class="axis-line"></line>
+      <rect x="${margin.left}" y="${criticalTop.toFixed(1)}" width="${chartW}" height="${(y(0) - criticalTop).toFixed(1)}" class="critical-band"></rect>
+      <line x1="${margin.left}" x2="${width - margin.right}" y1="${y(CRITICAL_ATTENDANCE).toFixed(1)}" y2="${y(CRITICAL_ATTENDANCE).toFixed(1)}" class="critical-boundary"></line>
+      <line x1="${margin.left}" x2="${width - margin.right}" y1="${y(TARGET_ATTENDANCE).toFixed(1)}" y2="${y(TARGET_ATTENDANCE).toFixed(1)}" class="target-line"></line>
+      <text x="${width - margin.right}" y="${(y(TARGET_ATTENDANCE) - 8).toFixed(1)}" text-anchor="end" class="target-text">Ziel: 10 Personen</text>
+      <text x="${width - margin.right}" y="${(y(CRITICAL_ATTENDANCE) + 18).toFixed(1)}" text-anchor="end" class="critical-text">kritisch unter 6</text>
+      <path d="${areaPath}" class="attendance-area"></path>
+      <path d="${linePath}" class="attendance-line"></path>
+      ${daily.map((day, index) => renderDateTick(day, index, daily.length, x, height, margin, dateStep)).join('')}
+      ${daily.map((day, index) => renderPoint(day, index, x, y)).join('')}
     </svg>
-    <div class="personnel-attendance-note">
-      <span class="note-target">Zielmarke: 10</span>
-      <span class="note-critical">kritisch: unter 6</span>
-    </div>
+  `;
+}
+
+function renderDateTick(day, index, totalDays, x, height, margin, step) {
+  if (index !== 0 && index !== totalDays - 1 && index % step !== 0) return '';
+  return `<text x="${x(index).toFixed(1)}" y="${height - margin.bottom + 28}" text-anchor="middle" class="tick-label x">${escapeHtml(day.label)}</text>`;
+}
+
+function renderPoint(day, index, x, y) {
+  const classes = ['point'];
+  if (day.count < CRITICAL_ATTENDANCE) classes.push('critical');
+  if (day.count >= TARGET_ATTENDANCE) classes.push('target-ok');
+  return `
+    <circle cx="${x(index).toFixed(1)}" cy="${y(day.count).toFixed(1)}" r="5.4" class="${classes.join(' ')}" tabindex="0">
+      <title>${escapeHtml(day.count)} Personen am ${escapeHtml(day.label)}</title>
+    </circle>
   `;
 }
 
@@ -220,40 +262,42 @@ function calculateStats(daily) {
   const counts = daily.map(day => day.count);
   const max = Math.max(...counts, 0);
   const avg = counts.length ? (counts.reduce((sum, value) => sum + value, 0) / counts.length).toFixed(1).replace('.', ',') : '0';
-  const segment = Math.max(Math.floor(counts.length / 3), 1);
-  const first = average(counts.slice(0, segment));
-  const last = average(counts.slice(-segment));
-  const diff = last - first;
-  const trendLabel = diff > 1 ? 'Trend steigend' : diff < -1 ? 'Trend fallend' : 'Trend stabil';
-  return { max, avg, trendLabel };
+  const criticalDays = counts.filter(value => value < CRITICAL_ATTENDANCE).length;
+  return { max, avg, criticalDays };
 }
 
-function pickHighlightPoints(daily) {
-  const max = Math.max(...daily.map(day => day.count), 0);
-  const min = Math.min(...daily.map(day => day.count), 0);
-  const result = [];
-  const maxIndex = daily.findIndex(day => day.count === max);
-  const minIndex = daily.findIndex(day => day.count === min);
-  if (maxIndex >= 0) result.push({ ...daily[maxIndex], index: maxIndex });
-  if (minIndex >= 0 && minIndex !== maxIndex) result.push({ ...daily[minIndex], index: minIndex });
-  return result;
+function buildTicks(maxY) {
+  const ticks = [];
+  const step = maxY <= 15 ? 3 : Math.ceil(maxY / 5);
+  for (let tick = 0; tick <= maxY; tick += step) ticks.push(tick);
+  if (!ticks.includes(CRITICAL_ATTENDANCE)) ticks.push(CRITICAL_ATTENDANCE);
+  if (!ticks.includes(TARGET_ATTENDANCE)) ticks.push(TARGET_ATTENDANCE);
+  return [...new Set(ticks)].sort((a, b) => a - b);
 }
 
 function renderLoading() {
   return `
-    <div class="personnel-attendance-head">
-      <div><strong>Anwesenheit</strong><span>wird geladen</span></div>
+    <div class="chart-head">
+      <div>
+        <div class="eyebrow">Personal · Anwesenheit</div>
+        <h3>Taegliche Personalstaerke im Zeitverlauf</h3>
+        <p class="subtitle">Diagramm wird geladen.</p>
+      </div>
     </div>
-    <div class="personnel-attendance-loading"></div>
+    <div class="chart-wrap loading-wrap"></div>
   `;
 }
 
 function renderEmpty(message) {
   return `
-    <div class="personnel-attendance-head">
-      <div><strong>Anwesenheit</strong><span>${escapeHtml(message)}</span></div>
+    <div class="chart-head">
+      <div>
+        <div class="eyebrow">Personal · Anwesenheit</div>
+        <h3>Taegliche Personalstaerke im Zeitverlauf</h3>
+        <p class="subtitle">${escapeHtml(message)}</p>
+      </div>
     </div>
-    <div class="personnel-attendance-empty">Keine Diagrammdaten</div>
+    <div class="chart-wrap empty-wrap">Keine Diagrammdaten</div>
   `;
 }
 
@@ -294,17 +338,6 @@ function parseDate(value) {
   return new Date(parts[0], parts[1] - 1, parts[2]);
 }
 
-function dateKey(date) {
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${date.getFullYear()}-${month}-${day}`;
-}
-
-function average(values) {
-  if (!values.length) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
 function getAuthSession() {
   return window.getManheimAuthSession?.(state.client) || state.client.auth.getSession();
 }
@@ -323,160 +356,219 @@ function injectStyles() {
   const style = document.createElement('style');
   style.id = 'personnelAttendanceChartStyles';
   style.textContent = `
-    .topbar {
-      gap: 16px;
-      align-items: center;
-    }
-    .personnel-attendance-chart {
-      flex: 0 1 430px;
-      min-width: 300px;
-      max-width: 470px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.88);
-      box-shadow: 0 8px 24px rgba(15, 39, 64, 0.06);
-      padding: 10px 12px 8px;
+    .personnel-attendance-chart.chart-card {
+      width: 100%;
+      margin: 16px 0 18px;
+      background: #fffaf2;
+      border: 1px solid #e1d6c7;
+      border-radius: 22px;
+      box-shadow: 0 18px 45px rgba(74, 57, 37, 0.12);
+      padding: 22px;
+      color: #2f2a24;
     }
     .personnel-attendance-chart.hidden {
       display: none;
     }
-    .personnel-attendance-head {
+    .personnel-attendance-chart .chart-head {
       display: flex;
-      align-items: flex-start;
       justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 4px;
-      color: var(--text);
+      gap: 20px;
+      align-items: flex-start;
+      margin-bottom: 18px;
     }
-    .personnel-attendance-head strong,
-    .personnel-attendance-head span {
-      display: block;
+    .personnel-attendance-chart .eyebrow {
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #766b5d;
+      margin-bottom: 6px;
     }
-    .personnel-attendance-head strong {
-      font-size: 0.92rem;
+    .personnel-attendance-chart h3 {
+      margin: 0;
+      font-size: clamp(20px, 2.2vw, 30px);
       line-height: 1.1;
+      color: #2f2a24;
     }
-    .personnel-attendance-head span {
-      color: var(--muted);
-      font-size: 0.76rem;
-      margin-top: 2px;
+    .personnel-attendance-chart .subtitle {
+      margin: 8px 0 0;
+      max-width: 620px;
+      color: #766b5d;
+      font-size: 14px;
+      line-height: 1.45;
     }
-    .personnel-attendance-stats {
+    .personnel-attendance-chart .kpis {
       display: flex;
-      gap: 6px;
+      gap: 10px;
       flex-wrap: wrap;
       justify-content: flex-end;
     }
-    .personnel-attendance-stats span,
-    .personnel-attendance-note span {
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: #f7fafc;
-      color: var(--muted);
-      font-size: 0.7rem;
-      font-weight: 700;
-      padding: 3px 7px;
+    .personnel-attendance-chart .kpi {
+      min-width: 98px;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(47, 42, 36, 0.08);
+      background: rgba(255, 255, 255, 0.62);
+    }
+    .personnel-attendance-chart .kpi strong {
+      display: block;
+      font-size: 22px;
+      line-height: 1;
+      color: #2f2a24;
+    }
+    .personnel-attendance-chart .kpi span {
+      display: block;
+      margin-top: 4px;
+      color: #766b5d;
+      font-size: 12px;
       white-space: nowrap;
     }
-    .personnel-attendance-svg {
-      display: block;
-      width: 100%;
-      height: auto;
-      min-height: 118px;
+    .personnel-attendance-chart .legend {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+      color: #766b5d;
+      font-size: 13px;
     }
-    .personnel-attendance-svg .grid-line {
-      stroke: #dbe6ef;
+    .personnel-attendance-chart .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .personnel-attendance-chart .swatch {
+      width: 22px;
+      height: 4px;
+      border-radius: 99px;
+      background: #2563eb;
+    }
+    .personnel-attendance-chart .swatch.target {
+      background: #16a34a;
+    }
+    .personnel-attendance-chart .swatch.critical {
+      height: 12px;
+      background: rgba(220, 38, 38, 0.16);
+      border: 1px solid rgba(220, 38, 38, 0.45);
+    }
+    .personnel-attendance-chart .chart-wrap {
+      position: relative;
+      width: 100%;
+      height: 430px;
+      border-radius: 18px;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(255,255,255,0.54), rgba(255,255,255,0.18)), #fffdf8;
+      border: 1px solid rgba(47, 42, 36, 0.08);
+    }
+    .personnel-attendance-chart svg {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .personnel-attendance-chart .tick-label {
+      fill: #766b5d;
+      font-size: 12px;
+    }
+    .personnel-attendance-chart .axis-title {
+      fill: #766b5d;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .personnel-attendance-chart .grid-line {
+      stroke: rgba(47, 42, 36, 0.12);
       stroke-width: 1;
     }
-    .personnel-attendance-svg .target-line {
-      stroke: #2f855a;
-      stroke-width: 1.7;
-      stroke-dasharray: 5 4;
+    .personnel-attendance-chart .axis-line {
+      stroke: rgba(47, 42, 36, 0.45);
+      stroke-width: 1.4;
     }
-    .personnel-attendance-svg .target-label {
-      fill: #2f855a;
-      font-size: 10px;
-      font-weight: 800;
-    }
-    .personnel-attendance-svg .critical-band {
-      fill: rgba(216, 59, 45, 0.13);
-    }
-    .personnel-attendance-svg .attendance-area {
-      fill: rgba(37, 99, 235, 0.1);
-      stroke: none;
-    }
-    .personnel-attendance-svg .attendance-line {
+    .personnel-attendance-chart .attendance-line {
       fill: none;
       stroke: #2563eb;
-      stroke-width: 2.4;
+      stroke-width: 4;
       stroke-linecap: round;
       stroke-linejoin: round;
+      filter: drop-shadow(0 6px 8px rgba(37, 99, 235, 0.18));
     }
-    .personnel-attendance-svg .attendance-dot {
-      fill: #ffffff;
+    .personnel-attendance-chart .attendance-area {
+      fill: rgba(37, 99, 235, 0.14);
+    }
+    .personnel-attendance-chart .target-line {
+      stroke: #16a34a;
+      stroke-width: 3;
+      stroke-dasharray: 8 7;
+      stroke-linecap: round;
+    }
+    .personnel-attendance-chart .critical-band {
+      fill: rgba(220, 38, 38, 0.16);
+    }
+    .personnel-attendance-chart .critical-boundary {
+      stroke: rgba(220, 38, 38, 0.45);
+      stroke-width: 1.5;
+      stroke-dasharray: 5 5;
+    }
+    .personnel-attendance-chart .target-text {
+      fill: #166534;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .personnel-attendance-chart .critical-text {
+      fill: #991b1b;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .personnel-attendance-chart .point {
+      fill: #fffdf8;
       stroke: #2563eb;
-      stroke-width: 2;
+      stroke-width: 3;
     }
-    .personnel-attendance-svg .axis-label {
-      fill: #60748a;
-      font-size: 10px;
+    .personnel-attendance-chart .point.critical {
+      stroke: #dc2626;
+      fill: #fff4f4;
     }
-    .personnel-attendance-note {
-      display: flex;
-      justify-content: space-between;
-      gap: 6px;
-      margin-top: 2px;
+    .personnel-attendance-chart .point.target-ok {
+      stroke: #16a34a;
+      fill: #f0fdf4;
     }
-    .personnel-attendance-note .note-target {
-      border-color: rgba(47, 133, 90, 0.28);
-      color: #286f4c;
-      background: #edf9f2;
+    .personnel-attendance-chart .note {
+      margin: 12px 2px 0;
+      color: #766b5d;
+      font-size: 13px;
+      line-height: 1.45;
     }
-    .personnel-attendance-note .note-critical {
-      border-color: rgba(216, 59, 45, 0.22);
-      color: #a7322b;
-      background: #fff2f1;
-    }
-    .personnel-attendance-loading,
-    .personnel-attendance-empty {
-      min-height: 118px;
-      border-radius: 8px;
-      background: linear-gradient(90deg, #eef4f9, #f8fbfd, #eef4f9);
-      color: var(--muted);
+    .personnel-attendance-chart .loading-wrap,
+    .personnel-attendance-chart .empty-wrap {
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.82rem;
-    }
-    .personnel-attendance-loading {
+      color: #766b5d;
+      background: linear-gradient(90deg, #fff7ea, #fffdf8, #fff7ea);
       background-size: 220% 100%;
       animation: personnel-attendance-pulse 1.4s ease-in-out infinite;
+    }
+    .personnel-attendance-chart .empty-wrap {
+      animation: none;
     }
     @keyframes personnel-attendance-pulse {
       0% { background-position: 0 50%; }
       100% { background-position: 220% 50%; }
     }
-    @media (max-width: 1180px) {
-      .topbar {
-        flex-wrap: wrap;
+    @media (max-width: 760px) {
+      .personnel-attendance-chart.chart-card {
+        padding: 16px;
       }
-      .personnel-attendance-chart {
-        order: 3;
-        flex-basis: 100%;
-        max-width: none;
+      .personnel-attendance-chart .chart-head {
+        display: block;
       }
-      .topbar-right {
-        margin-left: auto;
-      }
-    }
-    @media (max-width: 720px) {
-      .personnel-attendance-chart {
-        min-width: 0;
-        padding: 9px;
-      }
-      .personnel-attendance-note,
-      .personnel-attendance-stats {
+      .personnel-attendance-chart .kpis {
         justify-content: flex-start;
+        margin-top: 14px;
+      }
+      .personnel-attendance-chart .chart-wrap {
+        height: 380px;
+      }
+      .personnel-attendance-chart .tick-label.x {
+        font-size: 10px;
       }
     }
   `;
