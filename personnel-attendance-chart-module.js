@@ -10,6 +10,7 @@ const state = {
   client: null,
   loading: false,
   participants: [],
+  availabilitySlots: [],
   renderTimer: null
 };
 
@@ -39,6 +40,7 @@ function setupSupabase() {
   state.client.auth.onAuthStateChange(event => {
     if (event === 'SIGNED_OUT') {
       state.participants = [];
+      state.availabilitySlots = [];
       removeChart();
       return;
     }
@@ -94,6 +96,7 @@ async function loadParticipants() {
     if (sessionError) throw sessionError;
     if (!sessionData?.session?.user) {
       state.participants = [];
+      state.availabilitySlots = [];
       return;
     }
     const { data, error } = await state.client
@@ -103,6 +106,17 @@ async function loadParticipants() {
       .order('full_name');
     if (error) throw error;
     state.participants = data || [];
+    const { data: slots, error: slotsError } = await state.client
+      .from('participant_availability_slots')
+      .select('id,participant_id,availability_from,availability_to,order_index')
+      .order('order_index', { ascending: true })
+      .order('availability_from', { ascending: true, nullsFirst: false });
+    if (slotsError) {
+      console.warn('Zusatzzeiträume für Anwesenheitsdiagramm konnten nicht geladen werden.', slotsError);
+      state.availabilitySlots = [];
+    } else {
+      state.availabilitySlots = slots || [];
+    }
   } finally {
     state.loading = false;
   }
@@ -143,9 +157,9 @@ function isPersonalVisible() {
 
 function buildDailySeries(participants) {
   const days = eachProjectDay();
-  const counted = participants.filter(person => hasValidRange(person) && isCountedStatus(person.status));
+  const counted = participants.filter(person => slotsFor(person).length && isCountedStatus(person.status));
   return days.map(day => {
-    const count = counted.filter(person => isWithinRange(day.date, person.availability_from, person.availability_to)).length;
+    const count = counted.filter(person => slotsFor(person).some(slot => isWithinRange(day.date, slot.availability_from, slot.availability_to))).length;
     return { ...day, count };
   });
 }
@@ -318,9 +332,24 @@ function normalizeStatus(status) {
     .replaceAll('\\u00e4', 'ae');
 }
 
-function hasValidRange(person) {
-  const start = parseDate(person.availability_from);
-  const end = parseDate(person.availability_to);
+function slotsFor(person) {
+  const explicitSlots = state.availabilitySlots
+    .filter(slot => String(slot.participant_id) === String(person.id))
+    .sort((a, b) => (a.order_index ?? 999) - (b.order_index ?? 999) || compareDates(a.availability_from, b.availability_from))
+    .filter(hasValidSlot);
+  if (explicitSlots.length) return explicitSlots;
+  const fallback = {
+    participant_id: person.id,
+    availability_from: person.availability_from,
+    availability_to: person.availability_to,
+    order_index: 1
+  };
+  return hasValidSlot(fallback) ? [fallback] : [];
+}
+
+function hasValidSlot(slot) {
+  const start = parseDate(slot.availability_from);
+  const end = parseDate(slot.availability_to);
   return Boolean(start && end && end >= start);
 }
 
@@ -336,6 +365,13 @@ function parseDate(value) {
   const parts = String(value).slice(0, 10).split('-').map(Number);
   if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
   return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+function compareDates(a, b) {
+  if (!a && !b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  return parseDate(a) - parseDate(b);
 }
 
 function getAuthSession() {
