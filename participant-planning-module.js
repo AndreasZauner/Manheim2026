@@ -16,7 +16,8 @@ const state = {
   status: 'all',
   sort: 'start',
   loading: false,
-  authListenerBound: false
+  authListenerBound: false,
+  editingParticipantId: null
 };
 
 if (document.readyState === 'loading') {
@@ -44,7 +45,7 @@ function injectStylesheet() {
   if (document.querySelector('link[href^="./participant-planning-module.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = './participant-planning-module.css?v=planning-20260501-3';
+  link.href = './participant-planning-module.css?v=planning-20260504-1';
   document.head.appendChild(link);
 }
 
@@ -230,6 +231,7 @@ function renderDeployment() {
           <option value="status" ${state.sort === 'status' ? 'selected' : ''}>Nach Status</option>
           <option value="problem" ${state.sort === 'problem' ? 'selected' : ''}>Kl\u00e4rungsbedarf zuerst</option>
         </select>
+        <button id="personnelPdfExport" class="btn small personnel-pdf-btn" type="button">PDF exportieren</button>
       </div>
     </div>
     <section class="personnel-board">
@@ -274,6 +276,10 @@ function bindDeploymentUi() {
     state.sort = event.target.value;
     renderDeployment();
   });
+  document.getElementById('personnelPdfExport')?.addEventListener('click', exportPersonnelPdf);
+  document.querySelectorAll('.personnel-date-edit-btn').forEach(button => {
+    button.addEventListener('click', () => openDateEditor(button.dataset.id));
+  });
 }
 
 function getFilteredParticipants() {
@@ -315,6 +321,7 @@ function renderDeploymentRow(person) {
           ${hasProblem(person) ? '<span class="personnel-badge warning">Kl\u00e4rungsbedarf</span>' : ''}
           ${state.isManager && privateData.email ? `<span class="personnel-badge outline">${escapeHtml(privateData.email)}</span>` : ''}
         </div>
+        ${state.isManager ? `<div class="personnel-actions"><button class="btn small personnel-date-edit-btn" type="button" data-id="${escapeHtml(person.id)}">Zeitraum aendern</button></div>` : ''}
       </div>
       <div class="personnel-timeline-cell">
         <div class="personnel-timeline-wrap">
@@ -338,6 +345,162 @@ function summaryCards(list) {
     ['Kl\u00e4rungsbedarf', clarificationNeeded],
     ['Mit Anmerkung', withNote]
   ].map(([label, value]) => `<div class="personnel-stat"><span>${label}</span><strong>${value}</strong></div>`).join('');
+}
+
+function openDateEditor(participantId) {
+  if (!state.isManager) return;
+  const person = state.participants.find(row => String(row.id) === String(participantId));
+  if (!person) return;
+  state.editingParticipantId = person.id;
+  const drawer = ensureDateEditor();
+  drawer.querySelector('#personnelDateName').textContent = person.full_name || 'Ohne Namen';
+  drawer.querySelector('#personnelDateRole').textContent = person.public_role || 'Teilnehmende';
+  drawer.querySelector('#personnelDateFrom').value = dateInputValue(person.availability_from);
+  drawer.querySelector('#personnelDateTo').value = dateInputValue(person.availability_to);
+  drawer.querySelector('#personnelDateError').textContent = '';
+  document.getElementById('personnelDateBackdrop')?.classList.add('open');
+  drawer.classList.add('open');
+  drawer.setAttribute('aria-hidden', 'false');
+  drawer.querySelector('#personnelDateFrom')?.focus();
+}
+
+function ensureDateEditor() {
+  let drawer = document.getElementById('personnelDateDrawer');
+  if (drawer) return drawer;
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="personnelDateBackdrop" class="personnel-drawer-backdrop"></div>
+    <aside id="personnelDateDrawer" class="personnel-drawer personnel-date-drawer" aria-hidden="true">
+      <div class="personnel-drawer-header">
+        <div>
+          <h3>Teilnahmezeitraum aendern</h3>
+          <p><strong id="personnelDateName"></strong><br><span id="personnelDateRole"></span></p>
+        </div>
+        <button id="personnelDateClose" class="personnel-close" type="button" aria-label="Schliessen">x</button>
+      </div>
+      <form id="personnelDateForm" class="personnel-date-form">
+        <div class="personnel-drawer-body">
+          <label>Verfuegbar von
+            <input id="personnelDateFrom" class="personnel-field" type="date" min="2026-07-27" max="2026-10-09" required>
+          </label>
+          <label>Verfuegbar bis
+            <input id="personnelDateTo" class="personnel-field" type="date" min="2026-07-27" max="2026-10-09" required>
+          </label>
+          <p id="personnelDateError" class="personnel-form-error full" role="alert"></p>
+        </div>
+        <div class="personnel-drawer-footer">
+          <button class="btn small ghost" type="button" data-personnel-date-cancel>Abbrechen</button>
+          <button class="btn small" type="submit">Zeitraum speichern</button>
+        </div>
+      </form>
+    </aside>
+  `);
+  drawer = document.getElementById('personnelDateDrawer');
+  document.getElementById('personnelDateBackdrop')?.addEventListener('click', closeDateEditor);
+  document.getElementById('personnelDateClose')?.addEventListener('click', closeDateEditor);
+  drawer.querySelector('[data-personnel-date-cancel]')?.addEventListener('click', closeDateEditor);
+  drawer.querySelector('#personnelDateForm')?.addEventListener('submit', saveDateRange);
+  return drawer;
+}
+
+function closeDateEditor() {
+  state.editingParticipantId = null;
+  document.getElementById('personnelDateBackdrop')?.classList.remove('open');
+  const drawer = document.getElementById('personnelDateDrawer');
+  drawer?.classList.remove('open');
+  drawer?.setAttribute('aria-hidden', 'true');
+}
+
+async function saveDateRange(event) {
+  event.preventDefault();
+  if (!state.isManager || !state.client || !state.editingParticipantId) return;
+  const drawer = document.getElementById('personnelDateDrawer');
+  const errorNode = drawer?.querySelector('#personnelDateError');
+  const from = drawer?.querySelector('#personnelDateFrom')?.value;
+  const to = drawer?.querySelector('#personnelDateTo')?.value;
+  if (!from || !to) {
+    if (errorNode) errorNode.textContent = 'Bitte Anfangs- und Enddatum eintragen.';
+    return;
+  }
+  if (new Date(`${to}T00:00:00`) < new Date(`${from}T00:00:00`)) {
+    if (errorNode) errorNode.textContent = 'Das Enddatum darf nicht vor dem Startdatum liegen.';
+    return;
+  }
+  const submitButton = drawer?.querySelector('button[type="submit"]');
+  if (submitButton) submitButton.disabled = true;
+  if (errorNode) errorNode.textContent = '';
+  try {
+    const { error } = await state.client
+      .from('participants')
+      .update({ availability_from: from, availability_to: to })
+      .eq('id', state.editingParticipantId);
+    if (error) throw error;
+    state.participants = state.participants.map(person => (
+      String(person.id) === String(state.editingParticipantId)
+        ? { ...person, availability_from: from, availability_to: to }
+        : person
+    ));
+    closeDateEditor();
+    renderDeployment();
+  } catch (error) {
+    if (errorNode) errorNode.textContent = `Speichern fehlgeschlagen: ${error.message || error}`;
+  } finally {
+    if (submitButton) submitButton.disabled = false;
+  }
+}
+
+function exportPersonnelPdf() {
+  const rows = getFilteredParticipants();
+  const printedAt = new Date().toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' });
+  const tableRows = rows.map(person => `
+    <tr>
+      <td><strong>${escapeHtml(person.full_name || 'Ohne Namen')}</strong></td>
+      <td>${escapeHtml(person.public_role || 'Teilnehmende')}</td>
+      <td>${escapeHtml(prettyStatus(person.status))}</td>
+      <td>${escapeHtml(formatDate(person.availability_from))} - ${escapeHtml(formatDate(person.availability_to))}</td>
+      <td>${escapeHtml(shorten([person.availability_note, person.source_note].filter(Boolean).join(' - '), 220))}</td>
+    </tr>
+  `).join('');
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    window.alert('PDF-Export konnte nicht geoeffnet werden. Bitte Pop-ups fuer diese Seite erlauben.');
+    return;
+  }
+  printWindow.document.write(`<!doctype html>
+    <html lang="de">
+      <head>
+        <meta charset="utf-8">
+        <title>Personaleinsatz Kerpen-Manheim 2026</title>
+        <style>
+          @page { size: A4 landscape; margin: 14mm; }
+          body { font-family: Arial, sans-serif; color: #0f2740; margin: 0; }
+          header { display: flex; justify-content: space-between; gap: 24px; border-bottom: 2px solid #18324a; padding-bottom: 10px; margin-bottom: 14px; }
+          h1 { margin: 0 0 5px; font-size: 21px; }
+          p { margin: 0; color: #52677c; font-size: 11px; }
+          table { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+          th { text-align: left; background: #edf3f8; color: #17324a; border: 1px solid #c9d8e5; padding: 7px; }
+          td { vertical-align: top; border: 1px solid #d7e1ea; padding: 6px 7px; }
+          tr:nth-child(even) td { background: #f8fbfd; }
+          .meta { text-align: right; white-space: nowrap; }
+        </style>
+      </head>
+      <body>
+        <header>
+          <div>
+            <h1>Personaleinsatz Kerpen-Manheim 2026</h1>
+            <p>Gefilterte Ansicht aus der Web-App. Private Kontaktdaten und interne Notizen sind nicht enthalten.</p>
+          </div>
+          <p class="meta">Export: ${escapeHtml(printedAt)}<br>${rows.length} Personen</p>
+        </header>
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Rolle</th><th>Status</th><th>Zeitraum</th><th>Hinweis</th></tr>
+          </thead>
+          <tbody>${tableRows || '<tr><td colspan="5">Keine Personen fuer diese Auswahl.</td></tr>'}</tbody>
+        </table>
+        <script>window.addEventListener('load', () => setTimeout(() => window.print(), 150));</script>
+      </body>
+    </html>`);
+  printWindow.document.close();
 }
 
 function noteText(person) {
@@ -386,6 +549,10 @@ function compareDates(a, b) {
 function formatDate(value) {
   const date = parseDate(value);
   return date ? date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'offen';
+}
+
+function dateInputValue(value) {
+  return value ? String(value).slice(0, 10) : '';
 }
 
 function prettyStatus(status) {
