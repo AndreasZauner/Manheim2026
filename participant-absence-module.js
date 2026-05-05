@@ -12,6 +12,7 @@ const state = {
   availabilitySlots: [],
   absences: [],
   activeParticipantId: null,
+  domSignature: '',
   renderTimer: null
 };
 
@@ -61,7 +62,11 @@ function bindAuth() {
 function observePersonnel() {
   const observer = new MutationObserver(() => {
     hideDailyAttendancePanel();
-    scheduleEnhance(120);
+    const signature = currentPersonnelSignature();
+    if (signature && signature !== state.domSignature) {
+      state.domSignature = signature;
+      scheduleEnhance(120);
+    }
   });
   observer.observe(document.body, { childList: true, subtree: true });
   document.addEventListener('click', event => {
@@ -69,6 +74,14 @@ function observePersonnel() {
       scheduleEnhance(250);
     }
   });
+}
+
+function currentPersonnelSignature() {
+  const ids = [...document.querySelectorAll('#personnelDeploymentView .personnel-date-edit-btn[data-id]')]
+    .map(button => button.dataset.id)
+    .join('|');
+  const hasAttendancePanel = document.getElementById('attendancePanel') ? 'attendance' : '';
+  return `${ids}:${hasAttendancePanel}`;
 }
 
 function scheduleEnhance(delay = 0) {
