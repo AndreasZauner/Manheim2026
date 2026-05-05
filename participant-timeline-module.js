@@ -30,8 +30,11 @@ async function installParticipantBootstrap() {
         .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
     );
     imports.push(
-      import('./dashboard-command-module.js?v=leitstand-20260505-1')
-        .then(() => import('./dashboard-command-module-fix.js?v=leitstand-fix-20260505-1'))
+      import('./dashboard-command-module.js?v=weather-v2-20260505-1')
+        .then(() => import('./dashboard-command-module-fix.js?v=leitstand-fix-20260505-1')
+          .catch(error => console.error('Leitstand-Diagrammfix konnte nicht geladen werden', error)))
+        .then(() => import('./dashboard-weather-module.js?v=weather-v2-20260505-1')
+          .catch(error => console.error('Wettermodul konnte nicht geladen werden', error)))
         .catch(error => console.error('Leitstandmodule konnten nicht geladen werden', error))
     );
     await Promise.allSettled(imports);
