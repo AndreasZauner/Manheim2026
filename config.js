@@ -84,10 +84,16 @@ function wait(ms) {
   }
 
   function installModernAuthScreen() {
-    if (!document.querySelector('link[href="./auth-login.css"]')) {
+    if (!document.querySelector('link[href^="./auth-login.css"]')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = './auth-login.css?v=cleanup-20260501-1';
+      document.head.appendChild(link);
+    }
+    if (!document.querySelector('link[href^="./auth-login-variant.css"]')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = './auth-login-variant.css?v=20260505-1';
       document.head.appendChild(link);
     }
 
