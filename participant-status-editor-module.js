@@ -1,4 +1,5 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+import './participant-absence-module.js?v=absence-20260505-1';
 
 const MANAGER_ROLES = ['admin', 'professor', 'technical_lead', 'assistant'];
 const STATUS_OPTIONS = [
