@@ -267,6 +267,10 @@ function ensureDrawer() {
     drawer.querySelector('#absenceReasonNoteWrap')?.classList.toggle('hidden', event.target.value !== 'anderer_grund');
   });
   drawer.querySelector('#absenceForm')?.addEventListener('submit', saveAbsence);
+  drawer.querySelector('#absenceExistingList')?.addEventListener('click', event => {
+    const button = event.target?.closest?.('[data-delete-absence]');
+    if (button) deleteAbsence(button.dataset.deleteAbsence);
+  });
   return drawer;
 }
 
@@ -307,10 +311,36 @@ async function saveAbsence(event) {
     form.querySelector('#absenceReasonNoteWrap')?.classList.add('hidden');
     renderExistingAbsences();
     renderAbsenceOverlays();
+    notifyChartRefresh();
   } catch (error) {
     setError(`Speichern fehlgeschlagen: ${error.message || error}`);
   } finally {
     submit.disabled = false;
+  }
+}
+
+async function deleteAbsence(absenceId) {
+  if (!state.isManager || !absenceId || !state.client) return;
+  const item = state.absences.find(absence => String(absence.id) === String(absenceId));
+  if (!item) return;
+  const confirmed = window.confirm(`Ausfall ${formatDate(item.absence_from)} - ${formatDate(item.absence_to)} wirklich loeschen?`);
+  if (!confirmed) return;
+  setError('');
+  const button = document.querySelector(`[data-delete-absence="${CSS.escape(String(absenceId))}"]`);
+  if (button) button.disabled = true;
+  try {
+    const { error } = await state.client
+      .from('participant_absences')
+      .delete()
+      .eq('id', absenceId);
+    if (error) throw error;
+    state.absences = state.absences.filter(absence => String(absence.id) !== String(absenceId));
+    renderExistingAbsences();
+    renderAbsenceOverlays();
+    notifyChartRefresh();
+  } catch (error) {
+    setError(`Loeschen fehlgeschlagen: ${error.message || error}`);
+    if (button) button.disabled = false;
   }
 }
 
@@ -339,8 +369,11 @@ function renderExistingAbsences() {
   }
   list.innerHTML = items.map(item => `
     <div class="participant-absence-item">
-      <strong>${escapeHtml(formatDate(item.absence_from))} - ${escapeHtml(formatDate(item.absence_to))}</strong>
-      <span>${escapeHtml(absenceLabel(item))}</span>
+      <div>
+        <strong>${escapeHtml(formatDate(item.absence_from))} - ${escapeHtml(formatDate(item.absence_to))}</strong>
+        <span>${escapeHtml(absenceLabel(item))}</span>
+      </div>
+      <button class="participant-absence-delete" type="button" data-delete-absence="${escapeHtml(item.id)}">Loeschen</button>
     </div>
   `).join('');
 }
@@ -400,6 +433,10 @@ function setError(message) {
   if (node) node.textContent = message;
 }
 
+function notifyChartRefresh() {
+  document.dispatchEvent(new CustomEvent('participant-absences-changed'));
+}
+
 function getAuthSession() {
   return window.getManheimAuthSession?.(state.client) || state.client.auth.getSession();
 }
@@ -434,8 +471,12 @@ function injectStyles() {
     .participant-absence-existing { padding: 16px 20px 20px; overflow: auto; }
     .participant-absence-existing h4 { margin: 0 0 10px; }
     .participant-absence-item, .participant-absence-empty { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin-bottom: 8px; background: #fbfdff; }
+    .participant-absence-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
     .participant-absence-item strong, .participant-absence-item span { display: block; }
     .participant-absence-item span, .participant-absence-empty { color: var(--muted); font-size: .84rem; }
+    .participant-absence-delete { border: 1px solid #f2b8b5; border-radius: 999px; background: #fff5f5; color: #b42318; cursor: pointer; font-size: .72rem; font-weight: 900; padding: 5px 8px; }
+    .participant-absence-delete:hover, .participant-absence-delete:focus-visible { background: #fee4e2; border-color: #e53e3e; }
+    .participant-absence-delete:disabled { cursor: wait; opacity: .55; }
   `;
   document.head.appendChild(style);
 }
