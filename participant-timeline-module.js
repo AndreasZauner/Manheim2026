@@ -31,6 +31,7 @@ async function installParticipantBootstrap() {
     );
     imports.push(
       import('./dashboard-command-module.js?v=leitstand-20260505-1')
+        .then(() => import('./dashboard-command-module-fix.js?v=leitstand-fix-20260505-1'))
         .catch(error => console.error('Leitstandmodule konnten nicht geladen werden', error))
     );
     await Promise.allSettled(imports);
