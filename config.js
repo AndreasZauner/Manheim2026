@@ -79,7 +79,7 @@ function wait(ms) {
     if (document.querySelector('script[src^="./participant-timeline-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './participant-timeline-module.js?v=authlock-20260501-1';
+    script.src = './participant-timeline-module.js?v=chart-anchor-20260505-4';
     document.head.appendChild(script);
   }
 
