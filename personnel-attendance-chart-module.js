@@ -56,6 +56,7 @@ function bindUiEvents() {
   document.addEventListener('click', event => {
     if (event.target?.closest?.('.participant-planning-tab')) scheduleRender(140);
   });
+  document.addEventListener('participant-absences-changed', () => scheduleRender(120));
   window.addEventListener('resize', () => scheduleRender(120));
 }
 
