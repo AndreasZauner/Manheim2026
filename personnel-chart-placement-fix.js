@@ -13,6 +13,7 @@ function installPersonnelChartPlacementFix() {
   schedulePlacement(80);
   schedulePlacement(700);
   schedulePlacement(1600);
+  startShortPlacementGuard();
 }
 
 function bindPlacementEvents() {
@@ -28,6 +29,15 @@ function observeChartMoves() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
+function startShortPlacementGuard() {
+  let ticks = 0;
+  const timer = window.setInterval(() => {
+    ticks += 1;
+    anchorChart();
+    if (ticks > 80) window.clearInterval(timer);
+  }, 250);
+}
+
 function schedulePlacement(delay = 0) {
   window.clearTimeout(window.__personnelChartPlacementTimer);
   window.__personnelChartPlacementTimer = window.setTimeout(anchorChart, delay);
@@ -35,6 +45,7 @@ function schedulePlacement(delay = 0) {
 
 function anchorChart() {
   const chart = document.getElementById('personnelAttendanceChart');
+  tightenPersonalCopy();
   if (!chart) return;
 
   if (!isPersonalActive()) {
@@ -58,7 +69,9 @@ function ensureChartSlot() {
     slot = document.createElement('div');
     slot.id = 'personnelAttendanceChartSlot';
     slot.className = 'personnel-attendance-chart-slot';
-    planningTabs.insertAdjacentElement('afterend', slot);
+    planningTabs.insertAdjacentElement('beforebegin', slot);
+  } else if (slot.nextElementSibling !== planningTabs) {
+    planningTabs.insertAdjacentElement('beforebegin', slot);
   }
   return slot;
 }
@@ -76,16 +89,16 @@ function injectPlacementStyles() {
   const style = document.createElement('style');
   style.id = 'personnelChartPlacementFixStyles';
   style.textContent = `
-    body .topbar {
+    body:has(.nav-btn[data-tab="participants"].active) .topbar {
       align-items: center;
       min-height: 0;
-      margin-bottom: 24px;
+      margin-bottom: 10px;
     }
-    body .topbar > div:first-child {
+    body:has(.nav-btn[data-tab="participants"].active) .topbar > div:first-child {
       flex: 1 1 auto;
       min-width: 0;
     }
-    body .topbar > div:first-child p {
+    body:has(.nav-btn[data-tab="participants"].active) .topbar > div:first-child p {
       white-space: normal;
     }
     .personnel-attendance-chart-slot {
@@ -93,7 +106,7 @@ function injectPlacementStyles() {
       justify-content: flex-end;
       align-items: flex-start;
       width: 100%;
-      margin: 8px 0 18px;
+      margin: 2px 0 10px;
     }
     .personnel-attendance-chart-slot .personnel-attendance-chart.chart-card {
       position: relative !important;
@@ -118,4 +131,18 @@ function injectPlacementStyles() {
     }
   `;
   document.head.appendChild(style);
+}
+
+function tightenPersonalCopy() {
+  const subtitle = document.getElementById('pageSubtitle');
+  if (subtitle?.textContent?.includes('Kontaktfreigaben')) {
+    subtitle.textContent = 'Personaleinsatz, Zeiträume, Verbindlichkeit und Hinweise';
+  }
+  document.querySelectorAll('#participantsTab p, #personnelDeploymentView p').forEach(node => {
+    if (!node.textContent.includes('Kontaktfreigaben')) return;
+    node.textContent = node.textContent
+      .replace(/,?\s*Kontaktfreigaben und Sonderfunktionen\.?/g, '.')
+      .replace(/\s+\./g, '.')
+      .trim();
+  });
 }

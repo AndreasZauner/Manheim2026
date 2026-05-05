@@ -22,10 +22,8 @@ async function installParticipantBootstrap() {
     imports.push(
       import('./personnel-attendance-chart-module.js?v=attendance-chart-20260504-1')
         .catch(error => console.error('Anwesenheitsdiagramm konnte nicht geladen werden', error))
-    );
-    imports.push(
-      import('./personnel-chart-placement-fix.js?v=chart-anchor-20260505-1')
-        .catch(error => console.error('Diagrammplatzierung konnte nicht stabilisiert werden', error))
+        .finally(() => import('./personnel-chart-placement-fix.js?v=chart-anchor-20260505-3')
+          .catch(error => console.error('Diagrammplatzierung konnte nicht stabilisiert werden', error)))
     );
     imports.push(
       import('./v21-phase12-module.js?v=authlock-20260501-1')
