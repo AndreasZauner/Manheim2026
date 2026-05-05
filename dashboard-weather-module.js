@@ -258,7 +258,8 @@ function renderMapView() {
     <div class="weather-v2-map-actions">
       <button type="button" class="mini-btn ${state.layer === 'radar' ? 'active' : ''}" data-weather-v2-action="layer:radar">Niederschlag</button>
       <button type="button" class="mini-btn ${state.layer === 'warnings' ? 'active' : ''}" data-weather-v2-action="layer:warnings">Warnungen</button>
-      <button type="button" class="mini-btn ${state.layer === 'satellite' ? 'active' : ''}" data-weather-v2-action="layer:satellite">Satellit</button>
+      <button type="button" class="mini-btn ${state.layer === 'wind' ? 'active' : ''}" data-weather-v2-action="layer:wind">Wind</button>
+      <button type="button" class="mini-btn ${state.layer === 'uv' ? 'active' : ''}" data-weather-v2-action="layer:uv">UV</button>
       <button type="button" class="mini-btn" data-weather-v2-action="refresh">neu laden</button>
     </div>
     <div class="weather-v2-map-frame">
@@ -270,7 +271,7 @@ function renderMapView() {
       <strong>${layer.title}</strong>
       <span>${layer.description}</span>
     </div>
-    <p class="weather-v2-source">Kartenlayer: DWD Geoserver WMS. Wind und UV werden bewusst als Prognosewerte angezeigt, da sie für diesen kompakten Ausschnitt verlässlicher als lose Kartenoverlays sind.</p>
+    <p class="weather-v2-source">Kartenlayer: DWD Geoserver WMS. Die Werte in der Prognose bleiben zusätzlich als kompakte Tageskennzahlen sichtbar.</p>
   `;
 }
 
@@ -318,11 +319,17 @@ function mapLayer() {
       title: 'DWD Wetterwarnungen',
       description: 'Amtliche Warnungen auf Gemeindeebene, zusammengefasst.'
     },
-    satellite: {
-      layer: 'dwd:SAT_EU_RGB',
-      styles: '',
-      title: 'DWD Satellit Europa',
-      description: 'Satellitenbild Europa als DWD-WMS-Layer.'
+    wind: {
+      layer: 'dwd:Icon_reg025_fd_sl_UV10M',
+      styles: 'icon_reg025_fd_sl_uv10m_wmc_windbarbs',
+      title: 'DWD Wind 10 m',
+      description: 'ICON-Modell, Wind in 10 m Höhe mit Windpfeilen als offizieller DWD-WMS-Layer.'
+    },
+    uv: {
+      layer: 'dwd:UVIndex',
+      styles: 'uvindex',
+      title: 'DWD UV-Index',
+      description: 'Maximaler UV-Index des Tages aus ICON-EU als offizieller DWD-WMS-Layer.'
     }
   };
   const layer = layers[state.layer] || layers.radar;
