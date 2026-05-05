@@ -29,6 +29,10 @@ async function installParticipantBootstrap() {
       import('./v21-phase12-module.js?v=v21-copy-20260505-1')
         .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
     );
+    imports.push(
+      import('./dashboard-command-module.js?v=leitstand-20260505-1')
+        .catch(error => console.error('Leitstandmodule konnten nicht geladen werden', error))
+    );
     await Promise.allSettled(imports);
   }, 500);
 }
