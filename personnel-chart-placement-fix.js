@@ -92,7 +92,7 @@ function injectPlacementStyles() {
     body:has(.nav-btn[data-tab="participants"].active) .topbar {
       align-items: center;
       min-height: 0;
-      margin-bottom: 10px;
+      margin-bottom: 0;
     }
     body:has(.nav-btn[data-tab="participants"].active) .topbar > div:first-child {
       flex: 1 1 auto;
@@ -106,7 +106,8 @@ function injectPlacementStyles() {
       justify-content: flex-end;
       align-items: flex-start;
       width: 100%;
-      margin: 2px 0 10px;
+      margin: -142px 0 8px;
+      pointer-events: none;
     }
     .personnel-attendance-chart-slot .personnel-attendance-chart.chart-card {
       position: relative !important;
@@ -118,10 +119,13 @@ function injectPlacementStyles() {
       max-width: 100% !important;
       min-width: 0 !important;
       margin: 0 !important;
+      pointer-events: auto;
     }
     @media (max-width: 1180px) {
       .personnel-attendance-chart-slot {
         justify-content: stretch;
+        margin: 8px 0 12px;
+        pointer-events: auto;
       }
       .personnel-attendance-chart-slot .personnel-attendance-chart.chart-card {
         flex-basis: 100% !important;
