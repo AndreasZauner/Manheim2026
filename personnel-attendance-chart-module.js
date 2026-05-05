@@ -51,7 +51,10 @@ function setupSupabase() {
 }
 
 function bindUiEvents() {
-  document.querySelector('.nav-btn[data-tab="participants"]')?.addEventListener('click', () => scheduleRender(120));
+  document.querySelectorAll('.nav-btn').forEach(button => button.addEventListener('click', () => {
+    if (button.dataset.tab !== 'participants') hideChart();
+    scheduleRender(160);
+  }));
   document.getElementById('refreshButton')?.addEventListener('click', () => scheduleRender(1000));
   document.addEventListener('click', event => {
     if (event.target?.closest?.('.participant-planning-tab')) scheduleRender(140);
@@ -83,6 +86,10 @@ async function renderChart() {
   host.innerHTML = renderLoading();
   try {
     await loadParticipants();
+    if (!isPersonalVisible()) {
+      hideChart();
+      return;
+    }
     const daily = buildDailySeries(state.participants);
     host.innerHTML = renderChartCard(daily);
   } catch (error) {
@@ -166,7 +173,7 @@ function isPersonalVisible() {
   if (!app || app.classList.contains('hidden')) return false;
   const participantsTab = document.getElementById('participantsTab');
   const navActive = document.querySelector('.nav-btn[data-tab="participants"]')?.classList.contains('active');
-  return Boolean(navActive || participantsTab?.classList.contains('active'));
+  return Boolean(navActive && participantsTab?.classList.contains('active'));
 }
 
 function buildDailySeries(participants) {
