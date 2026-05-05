@@ -36,8 +36,13 @@ function enhance() {
   const module = document.getElementById('leitstandPersonnelModule');
   if (!module) return;
   module.classList.toggle('is-collapsed', state.collapsed);
+  removeCompactButton(module);
   ensureCollapseButton(module);
   colorizeChart(module);
+}
+
+function removeCompactButton(module) {
+  module.querySelector('[data-leitstand-module-action="toggle-size"]')?.remove();
 }
 
 function ensureCollapseButton(module) {
