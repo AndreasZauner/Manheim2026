@@ -106,7 +106,7 @@ function injectPlacementStyles() {
       justify-content: flex-end;
       align-items: flex-start;
       width: 100%;
-      margin: -142px 0 8px;
+      margin: -116px 0 8px;
       pointer-events: none;
     }
     .personnel-attendance-chart-slot .personnel-attendance-chart.chart-card {
