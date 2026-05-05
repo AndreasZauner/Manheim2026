@@ -13,6 +13,7 @@ function installPersonnelChartPlacementFix() {
   schedulePlacement(80);
   schedulePlacement(700);
   schedulePlacement(1600);
+  startShortPlacementGuard();
 }
 
 function bindPlacementEvents() {
@@ -26,6 +27,15 @@ function bindPlacementEvents() {
 function observeChartMoves() {
   const observer = new MutationObserver(() => schedulePlacement(0));
   observer.observe(document.body, { childList: true, subtree: true });
+}
+
+function startShortPlacementGuard() {
+  let ticks = 0;
+  const timer = window.setInterval(() => {
+    ticks += 1;
+    anchorChart();
+    if (ticks > 80) window.clearInterval(timer);
+  }, 250);
 }
 
 function schedulePlacement(delay = 0) {
