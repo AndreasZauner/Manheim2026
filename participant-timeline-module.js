@@ -33,8 +33,12 @@ async function installParticipantBootstrap() {
       import('./dashboard-command-module.js?v=weather-v2-20260505-1')
         .then(() => import('./dashboard-command-module-fix.js?v=leitstand-fix-20260505-1')
           .catch(error => console.error('Leitstand-Diagrammfix konnte nicht geladen werden', error)))
+        .then(() => import('./dashboard-leitstand-layout-fix.js?v=leitstand-layout-20260505-1')
+          .catch(error => console.error('Leitstand-Layout konnte nicht stabilisiert werden', error)))
         .then(() => import('./dashboard-weather-module.js?v=weather-v2-20260505-1')
           .catch(error => console.error('Wettermodul konnte nicht geladen werden', error)))
+        .then(() => import('./dashboard-weather-map-fix.js?v=weather-map-fix-20260505-1')
+          .catch(error => console.error('Interaktive Wetterkarte konnte nicht geladen werden', error)))
         .catch(error => console.error('Leitstandmodule konnten nicht geladen werden', error))
     );
     await Promise.allSettled(imports);
