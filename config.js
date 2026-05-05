@@ -47,7 +47,6 @@ function wait(ms) {
   document.addEventListener('DOMContentLoaded', loadMapModule);
   loadAttendanceModule();
   loadParticipantTimelineModule();
-  loadDashboardCommandModule();
   document.addEventListener('DOMContentLoaded', installModernAuthScreen);
   document.addEventListener('DOMContentLoaded', installIdeaFormHotfix);
   document.addEventListener('DOMContentLoaded', installPasswordToggle);
@@ -81,14 +80,6 @@ function wait(ms) {
     const script = document.createElement('script');
     script.type = 'module';
     script.src = './participant-timeline-module.js?v=leitstand-weather-map-20260505-1';
-    document.head.appendChild(script);
-  }
-
-  function loadDashboardCommandModule() {
-    if (document.querySelector('script[src^="./dashboard-command-module.js"]')) return;
-    const script = document.createElement('script');
-    script.type = 'module';
-    script.src = './dashboard-command-module.js?v=leitstand-20260505-1';
     document.head.appendChild(script);
   }
 
@@ -174,7 +165,7 @@ function wait(ms) {
       input.type = 'text';
       input.setAttribute('list', list.id);
       input.autocomplete = 'off';
-      input.placeholder = 'Kategorie w e4hlen oder neu eintippen';
+      input.placeholder = 'Kategorie wählen oder neu eintippen';
       input.style.width = '100%';
       select.insertAdjacentElement('afterend', list);
       select.insertAdjacentElement('afterend', input);
@@ -268,13 +259,13 @@ function wait(ms) {
     const t = String(text || '').toLowerCase();
     const rules = [
       [gisWords, 'dokumentation', 'GIS / Kartenviewer'],
-      [['befund','profil','planum','foto','sfm','dokumentation','nummer','fundliste','qc'], 'dokumentation', 'Qualit e4tskontrolle'],
-      [['schnitt','schnittleiter','antoniterhof','hofkapelle','marktplatz','villa','grabenstruktur','flaeche','fl e4che'], 'schnitte', 'Feldorganisation'],
-      [['teilnehmer','studierende','personal','zusage','verfuegbarkeit','verf fcgbarkeit','onboarding','schicht'], 'personal', 'Teilnehmendenmanagement'],
-      [['buero','b fcro','haus','transport','fahrzeug','lager','material','warnweste','unterkunft'], 'logistik', 'Infrastruktur'],
+      [['befund','profil','planum','foto','sfm','dokumentation','nummer','fundliste','qc'], 'dokumentation', 'Qualitätskontrolle'],
+      [['schnitt','schnittleiter','antoniterhof','hofkapelle','marktplatz','villa','grabenstruktur','flaeche','fläche'], 'schnitte', 'Feldorganisation'],
+      [['teilnehmer','studierende','personal','zusage','verfuegbarkeit','verfügbarkeit','onboarding','schicht'], 'personal', 'Teilnehmendenmanagement'],
+      [['buero','büro','haus','transport','fahrzeug','lager','material','warnweste','unterkunft'], 'logistik', 'Infrastruktur'],
       [['fund','probe','tierknochen','reinigung','datenbank'], 'funde', 'Fundbearbeitung'],
       [['notfall','erste hilfe','hitze','sicherheit','wetter','unfall'], 'sicherheit', 'Notfall'],
-      [['landesamt','amt','professor','auflage','rueckmeldung','r fcckmeldung'], 'schnittstelle_amt', 'Professor als Schnittstelle']
+      [['landesamt','amt','professor','auflage','rueckmeldung','rückmeldung'], 'schnittstelle_amt', 'Professor als Schnittstelle']
     ];
     const hit = rules.find(([keys]) => keys.some(key => t.includes(key)));
     return hit ? { category: hit[1], subcategory: hit[2] } : defaultSuggestion;
@@ -283,7 +274,7 @@ function wait(ms) {
   function valueFor(label) { return knownCategories.find(([, text]) => text.toLowerCase() === String(label).trim().toLowerCase())?.[0] || String(label || '').trim(); }
   function withTimeout(promise, label, ms = 15000) {
     let timeoutId;
-    const timeout = new Promise((_, reject) => { timeoutId = window.setTimeout(() => reject(new Error(`${label} dauert zu lange. Bitte Verbindung und Supabase pr fcfen.`)), ms); });
+    const timeout = new Promise((_, reject) => { timeoutId = window.setTimeout(() => reject(new Error(`${label} dauert zu lange. Bitte Verbindung und Supabase prüfen.`)), ms); });
     return Promise.race([Promise.resolve(promise).finally(() => window.clearTimeout(timeoutId)), timeout]);
   }
   function escapeHtml(value) { return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;'); }
