@@ -76,16 +76,16 @@ function injectPlacementStyles() {
   const style = document.createElement('style');
   style.id = 'personnelChartPlacementFixStyles';
   style.textContent = `
-    body .topbar {
+    body:has(.nav-btn[data-tab="participants"].active) .topbar {
       align-items: center;
       min-height: 0;
-      margin-bottom: 24px;
+      margin-bottom: 10px;
     }
-    body .topbar > div:first-child {
+    body:has(.nav-btn[data-tab="participants"].active) .topbar > div:first-child {
       flex: 1 1 auto;
       min-width: 0;
     }
-    body .topbar > div:first-child p {
+    body:has(.nav-btn[data-tab="participants"].active) .topbar > div:first-child p {
       white-space: normal;
     }
     .personnel-attendance-chart-slot {
@@ -93,7 +93,7 @@ function injectPlacementStyles() {
       justify-content: flex-end;
       align-items: flex-start;
       width: 100%;
-      margin: 8px 0 18px;
+      margin: 2px 0 10px;
     }
     .personnel-attendance-chart-slot .personnel-attendance-chart.chart-card {
       position: relative !important;
