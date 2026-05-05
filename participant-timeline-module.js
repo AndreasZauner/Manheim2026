@@ -26,7 +26,7 @@ async function installParticipantBootstrap() {
           .catch(error => console.error('Diagrammplatzierung konnte nicht stabilisiert werden', error)))
     );
     imports.push(
-      import('./v21-phase12-module.js?v=authlock-20260501-1')
+      import('./v21-phase12-module.js?v=v21-copy-20260505-1')
         .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
     );
     await Promise.allSettled(imports);

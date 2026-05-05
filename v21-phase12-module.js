@@ -200,7 +200,7 @@ function enhancePersonal() {
   const head = document.querySelector('#participantsTab .section-head');
   if (head) {
     head.querySelector('h3')?.replaceChildren(document.createTextNode('Personaleinsatz'));
-    head.querySelector('.muted, p')?.replaceChildren(document.createTextNode('Zeiträume, Verbindlichkeit, Hinweise, Kontaktfreigaben und Sonderfunktionen.'));
+    head.querySelector('.muted, p')?.replaceChildren(document.createTextNode('Zeiträume, Verbindlichkeit und Hinweise.'));
   }
   const controls = document.querySelector('.personnel-controls');
   if (!state.isManager) {
