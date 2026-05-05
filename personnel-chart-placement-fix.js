@@ -35,6 +35,7 @@ function schedulePlacement(delay = 0) {
 
 function anchorChart() {
   const chart = document.getElementById('personnelAttendanceChart');
+  tightenPersonalCopy();
   if (!chart) return;
 
   if (!isPersonalActive()) {
@@ -58,7 +59,9 @@ function ensureChartSlot() {
     slot = document.createElement('div');
     slot.id = 'personnelAttendanceChartSlot';
     slot.className = 'personnel-attendance-chart-slot';
-    planningTabs.insertAdjacentElement('afterend', slot);
+    planningTabs.insertAdjacentElement('beforebegin', slot);
+  } else if (slot.nextElementSibling !== planningTabs) {
+    planningTabs.insertAdjacentElement('beforebegin', slot);
   }
   return slot;
 }
@@ -118,4 +121,18 @@ function injectPlacementStyles() {
     }
   `;
   document.head.appendChild(style);
+}
+
+function tightenPersonalCopy() {
+  const subtitle = document.getElementById('pageSubtitle');
+  if (subtitle?.textContent?.includes('Kontaktfreigaben')) {
+    subtitle.textContent = 'Personaleinsatz, Zeitr\u00e4ume, Verbindlichkeit und Hinweise';
+  }
+  document.querySelectorAll('#participantsTab p, #personnelDeploymentView p').forEach(node => {
+    if (!node.textContent.includes('Kontaktfreigaben')) return;
+    node.textContent = node.textContent
+      .replace(/,?\s*Kontaktfreigaben und Sonderfunktionen\.?/g, '.')
+      .replace(/\s+\./g, '.')
+      .trim();
+  });
 }
