@@ -11,6 +11,7 @@ const state = {
   loading: false,
   participants: [],
   availabilitySlots: [],
+  absences: [],
   renderTimer: null
 };
 
@@ -41,6 +42,7 @@ function setupSupabase() {
     if (event === 'SIGNED_OUT') {
       state.participants = [];
       state.availabilitySlots = [];
+      state.absences = [];
       removeChart();
       return;
     }
@@ -97,6 +99,7 @@ async function loadParticipants() {
     if (!sessionData?.session?.user) {
       state.participants = [];
       state.availabilitySlots = [];
+      state.absences = [];
       return;
     }
     const { data, error } = await state.client
@@ -116,6 +119,16 @@ async function loadParticipants() {
       state.availabilitySlots = [];
     } else {
       state.availabilitySlots = slots || [];
+    }
+    const { data: absences, error: absencesError } = await state.client
+      .from('participant_absences')
+      .select('id,participant_id,absence_from,absence_to')
+      .order('absence_from', { ascending: true });
+    if (absencesError) {
+      console.warn('Ausfälle für Anwesenheitsdiagramm konnten nicht geladen werden.', absencesError);
+      state.absences = [];
+    } else {
+      state.absences = absences || [];
     }
   } finally {
     state.loading = false;
@@ -159,7 +172,10 @@ function buildDailySeries(participants) {
   const days = eachProjectDay();
   const counted = participants.filter(person => slotsFor(person).length && isCountedStatus(person.status));
   return days.map(day => {
-    const count = counted.filter(person => slotsFor(person).some(slot => isWithinRange(day.date, slot.availability_from, slot.availability_to))).length;
+    const count = counted.filter(person => {
+      const isPlanned = slotsFor(person).some(slot => isWithinRange(day.date, slot.availability_from, slot.availability_to));
+      return isPlanned && !hasAbsenceOnDay(person.id, day.date);
+    }).length;
     return { ...day, count };
   });
 }
@@ -358,6 +374,13 @@ function isWithinRange(day, from, to) {
   const end = parseDate(to);
   if (!start || !end) return false;
   return day >= start && day <= end;
+}
+
+function hasAbsenceOnDay(participantId, day) {
+  return state.absences.some(absence => (
+    String(absence.participant_id) === String(participantId)
+    && isWithinRange(day, absence.absence_from, absence.absence_to)
+  ));
 }
 
 function parseDate(value) {
