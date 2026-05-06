@@ -415,3 +415,96 @@ input[type="password"] {
     grid-column: auto;
   }
 }
+
+@media (min-width: 861px) {
+  :root {
+    --sidebar-rail-width: 58px;
+    --sidebar-open-width: 280px;
+  }
+
+  .app-shell {
+    grid-template-columns: var(--sidebar-rail-width) minmax(0, 1fr);
+  }
+
+  .app-shell .sidebar {
+    width: var(--sidebar-open-width);
+    max-width: var(--sidebar-open-width);
+    position: relative;
+    z-index: 60;
+    transform: translateX(calc(var(--sidebar-rail-width) - var(--sidebar-open-width)));
+    transition: transform .22s ease, box-shadow .22s ease;
+    overflow-x: hidden;
+    box-shadow: 10px 0 28px rgba(6, 20, 35, .16);
+  }
+
+  .app-shell .sidebar:hover,
+  .app-shell .sidebar:focus-within {
+    transform: translateX(0);
+    box-shadow: 18px 0 38px rgba(6, 20, 35, .22);
+  }
+
+  .app-shell .sidebar::before {
+    content: "Menü";
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: var(--sidebar-rail-width);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 24px;
+    background:
+      linear-gradient(180deg, rgba(31, 122, 224, .26), rgba(15, 34, 54, .04)),
+      #0f2236;
+    border-left: 1px solid rgba(255, 255, 255, .12);
+    color: #eaf4ff;
+    font-size: .78rem;
+    font-weight: 900;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    opacity: 1;
+    pointer-events: none;
+    transition: opacity .14s ease;
+  }
+
+  .app-shell .sidebar::after {
+    content: "›";
+    position: absolute;
+    top: 50%;
+    right: 16px;
+    transform: translateY(-50%);
+    width: 26px;
+    height: 26px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, .12);
+    color: #fff;
+    font-size: 1.25rem;
+    line-height: 1;
+    pointer-events: none;
+    transition: opacity .14s ease;
+  }
+
+  .app-shell .sidebar:hover::before,
+  .app-shell .sidebar:focus-within::before,
+  .app-shell .sidebar:hover::after,
+  .app-shell .sidebar:focus-within::after {
+    opacity: 0;
+  }
+
+  .main {
+    padding-left: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-shell .sidebar,
+  .app-shell .sidebar::before,
+  .app-shell .sidebar::after {
+    transition: none;
+  }
+}
