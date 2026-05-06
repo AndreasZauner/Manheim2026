@@ -79,7 +79,7 @@ function wait(ms) {
     if (document.querySelector('script[src^="./participant-timeline-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './participant-timeline-module.js?v=leitstand-weather-map-20260505-1';
+    script.src = './participant-timeline-module.js?v=leitstand-responsive-20260506-1';
     document.head.appendChild(script);
   }
 
