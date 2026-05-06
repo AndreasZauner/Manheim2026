@@ -68,9 +68,19 @@
     document.addEventListener('keydown', onLegendKeydown);
     scheduleApply(80);
     scheduleApply(700);
-    const observer = new MutationObserver(() => scheduleApply());
+    const observer = new MutationObserver(mutations => {
+      if (mutations.every(isInternalMapMutation)) return;
+      scheduleApply();
+    });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     window.addEventListener('resize', () => scheduleApply(120), { passive: true });
+  }
+
+  function isInternalMapMutation(mutation) {
+    const target = mutation.target?.nodeType === Node.ELEMENT_NODE
+      ? mutation.target
+      : mutation.target?.parentElement;
+    return Boolean(target?.closest?.('.weather-map-fix-canvas,.weather-map-fix-legend,.weather-map-fix-timeline'));
   }
 
   function scheduleApply(delay = 70) {
@@ -184,7 +194,10 @@
     if (!map) return;
     const selected = LAYERS[key] || LAYERS.radar;
     if (weatherLayer && currentKey === key) {
-      syncTimeline(selected);
+      const timeline = currentFrame?.querySelector('.weather-map-fix-timeline');
+      if (selected.timeControl && (!timeline?.classList.contains('is-visible') || !timeline.querySelector('input'))) {
+        syncTimeline(selected);
+      }
       return;
     }
     if (weatherLayer) map.removeLayer(weatherLayer);
@@ -249,23 +262,43 @@
   function renderTimeline(index, fallback = false) {
     const timeline = currentFrame?.querySelector('.weather-map-fix-timeline');
     if (!timeline || !weatherLayer || !forecastFrames.length) return;
-    const frame = forecastFrames[index] || forecastFrames[0];
-    currentForecastIndex = index;
+    const signature = `${forecastFrames.length}:${fallback ? 'fallback' : 'dwd'}`;
+    if (timeline.dataset.timelineSignature !== signature) {
+      timeline.dataset.timelineSignature = signature;
+      timeline.innerHTML = `
+        <div class="weather-map-fix-time-head">
+          <strong data-weather-time-label></strong>
+          <span data-weather-time-source></span>
+        </div>
+        <input type="range" min="0" max="${forecastFrames.length - 1}" value="${index}" step="1" aria-label="Zeitpunkt der Niederschlagsprognose">
+        <div class="weather-map-fix-time-range">
+          <span>${forecastFrames[0]?.short || ''}</span>
+          <span>${forecastFrames[forecastFrames.length - 1]?.short || ''}</span>
+        </div>
+      `;
+      timeline.querySelector('input')?.addEventListener('input', event => {
+        setForecastFrame(Number(event.currentTarget.value) || 0, fallback);
+      });
+    }
+    const range = timeline.querySelector('input');
+    if (range) {
+      range.max = String(forecastFrames.length - 1);
+      range.value = String(index);
+    }
+    setForecastFrame(index, fallback);
+  }
+
+  function setForecastFrame(index, fallback = false) {
+    if (!weatherLayer || !forecastFrames.length) return;
+    const safeIndex = Math.max(0, Math.min(index, forecastFrames.length - 1));
+    const frame = forecastFrames[safeIndex] || forecastFrames[0];
+    currentForecastIndex = safeIndex;
     weatherLayer.setParams({ time: frame.value }, false);
-    timeline.innerHTML = `
-      <div class="weather-map-fix-time-head">
-        <strong>${frame.label}</strong>
-        <span>${fallback ? 'Fallback-Zeitachse' : 'DWD RV'}</span>
-      </div>
-      <input type="range" min="0" max="${forecastFrames.length - 1}" value="${index}" step="1" aria-label="Zeitpunkt der Niederschlagsprognose">
-      <div class="weather-map-fix-time-range">
-        <span>${forecastFrames[0]?.short || ''}</span>
-        <span>${forecastFrames[forecastFrames.length - 1]?.short || ''}</span>
-      </div>
-    `;
-    timeline.querySelector('input')?.addEventListener('input', event => {
-      renderTimeline(Number(event.currentTarget.value) || 0, fallback);
-    });
+    const timeline = currentFrame?.querySelector('.weather-map-fix-timeline');
+    const label = timeline?.querySelector('[data-weather-time-label]');
+    const source = timeline?.querySelector('[data-weather-time-source]');
+    if (label) label.textContent = frame.label;
+    if (source) source.textContent = fallback ? 'Fallback-Zeitachse' : 'DWD RV';
   }
 
   function getForecastFrames() {
@@ -412,13 +445,14 @@
       .weather-v2-map-frame.is-loading .weather-map-fix-loading{display:grid}
       .weather-map-fix-legend{position:absolute;left:10px;bottom:10px;z-index:600;display:grid;gap:4px;max-width:172px;border:1px solid rgba(207,221,235,.95);border-radius:8px;background:rgba(255,255,255,.94);padding:7px;box-shadow:0 8px 18px rgba(15,39,64,.12);cursor:pointer;transition:max-width .16s ease,padding .16s ease,box-shadow .16s ease}
       .weather-map-fix-legend:focus-visible{outline:3px solid rgba(37,99,235,.28);outline-offset:2px}
-      .weather-map-fix-legend.is-expanded{max-width:min(320px,calc(100% - 20px));padding:10px;box-shadow:0 16px 34px rgba(15,39,64,.22)}
+      .weather-map-fix-legend.is-expanded{max-width:min(320px,calc(100% - 20px));max-height:calc(100% - 20px);overflow:auto;padding:10px;box-shadow:0 16px 34px rgba(15,39,64,.22);overscroll-behavior:contain}
       .weather-map-fix-legend strong{font-size:.7rem;color:var(--text)}
       .weather-map-fix-legend span{font-size:.63rem;line-height:1.18;color:var(--muted)}
       .weather-map-fix-legend img{display:block;max-width:100%;max-height:68px;object-fit:contain}
       .weather-map-fix-legend.is-expanded strong{font-size:.82rem}
       .weather-map-fix-legend.is-expanded span{font-size:.75rem;line-height:1.28}
-      .weather-map-fix-legend.is-expanded img{max-height:168px}
+      .weather-map-fix-legend.is-expanded img{max-height:98px}
+      #leitstandWeatherModule.is-weather-max.has-weather-map-fix .weather-map-fix-legend.is-expanded img{max-height:168px}
       .weather-map-fix-legend img.is-hidden{display:none}
       .weather-map-fix-timeline{display:none;position:absolute;right:10px;top:10px;z-index:590;width:min(270px,calc(100% - 204px));border:1px solid rgba(207,221,235,.95);border-radius:8px;background:rgba(255,255,255,.94);padding:7px 9px;box-shadow:0 8px 18px rgba(15,39,64,.12)}
       .weather-map-fix-timeline.is-visible{display:grid;gap:5px}
