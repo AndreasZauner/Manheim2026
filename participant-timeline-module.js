@@ -30,7 +30,9 @@ async function installParticipantBootstrap() {
         .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
     );
     imports.push(
-      import('./idea-lab-module.js?v=idea-lab-20260506-1')
+      import('./idea-lab-module.js?v=idea-lab-20260506-2')
+        .then(() => import('./idea-lab-mindmap-editor.js?v=idea-lab-mindmap-20260506-1')
+          .catch(error => console.error('Grafische Ideenlabor-Mindmap konnte nicht geladen werden', error)))
         .catch(error => console.error('Ideenlabor konnte nicht geladen werden', error))
     );
     imports.push(
