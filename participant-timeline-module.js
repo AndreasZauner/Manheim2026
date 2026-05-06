@@ -37,7 +37,7 @@ async function installParticipantBootstrap() {
           .catch(error => console.error('Leitstand-Layout konnte nicht stabilisiert werden', error)))
         .then(() => import('./dashboard-weather-module.js?v=weather-v2-20260505-1')
           .catch(error => console.error('Wettermodul konnte nicht geladen werden', error)))
-        .then(() => import('./dashboard-weather-map-fix.js?v=weather-map-basemap-20260506-1')
+        .then(() => import('./dashboard-weather-map-fix.js?v=weather-map-forecast-20260506-1')
           .catch(error => console.error('Interaktive Wetterkarte konnte nicht geladen werden', error)))
         .catch(error => console.error('Leitstandmodule konnten nicht geladen werden', error))
     );
