@@ -466,6 +466,7 @@ input[type="password"] {
     writing-mode: vertical-rl;
     text-orientation: mixed;
     opacity: 1;
+    z-index: 2;
     pointer-events: none;
     transition: opacity .14s ease;
   }
@@ -485,6 +486,7 @@ input[type="password"] {
     color: #fff;
     font-size: 1.25rem;
     line-height: 1;
+    z-index: 3;
     pointer-events: none;
     transition: opacity .14s ease;
   }
