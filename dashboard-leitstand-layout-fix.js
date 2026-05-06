@@ -59,10 +59,11 @@
     style.textContent = `
       #dashboardTab.has-leitstand-layout-fix .leitstand-command-header.is-layout-fixed{
         display:grid;
-        grid-template-columns:minmax(160px,205px) minmax(0,1fr);
+        grid-template-columns:minmax(150px,190px) minmax(0,1fr);
         gap:10px 14px;
         align-items:start;
         margin-bottom:14px;
+        max-width:100%;
       }
       #dashboardTab.has-leitstand-layout-fix .leitstand-layout-title{
         grid-column:1/-1;
@@ -116,15 +117,16 @@
       #dashboardTab.has-leitstand-layout-fix .leitstand-command-modules{
         grid-column:2;
         display:grid;
-        grid-template-columns:minmax(340px,.85fr) minmax(520px,1.3fr);
+        grid-template-columns:minmax(300px,.88fr) minmax(400px,1.12fr);
         gap:12px;
         min-width:0;
+        max-width:100%;
       }
       #dashboardTab.has-leitstand-layout-fix #leitstandPersonnelModule,
       #dashboardTab.has-leitstand-layout-fix #leitstandWeatherModule{
         min-width:0;
       }
-      @media (max-width:1280px){
+      @media (max-width:1500px){
         #dashboardTab.has-leitstand-layout-fix .leitstand-command-header.is-layout-fixed{
           grid-template-columns:1fr;
         }
@@ -135,11 +137,16 @@
         #dashboardTab.has-leitstand-layout-fix .leitstand-layout-kpis .leitstand-kpi-strip{
           grid-template-columns:repeat(4,minmax(110px,1fr)) !important;
         }
+        #dashboardTab.has-leitstand-layout-fix .leitstand-command-modules{
+          grid-template-columns:minmax(300px,.9fr) minmax(390px,1.1fr);
+        }
       }
-      @media (max-width:980px){
+      @media (max-width:1180px){
         #dashboardTab.has-leitstand-layout-fix .leitstand-command-modules{
           grid-template-columns:1fr;
         }
+      }
+      @media (max-width:980px){
         #dashboardTab.has-leitstand-layout-fix .leitstand-layout-kpis .leitstand-kpi-strip{
           grid-template-columns:repeat(2,minmax(0,1fr)) !important;
         }
