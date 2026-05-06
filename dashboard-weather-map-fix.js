@@ -5,6 +5,7 @@
   const PLACE = { label: 'Kerpen-Manheim', lat: 50.889, lon: 6.646 };
   const WMS_URL = 'https://maps.dwd.de/geoserver/wms';
   const FORECAST_CAPABILITIES_URL = 'https://maps.dwd.de/geoserver/dwd/Radar_rv_product_1x1km_ger/wms?service=WMS&version=1.3.0&request=GetCapabilities';
+  const ICON_24H_CAPABILITIES_URL = 'https://maps.dwd.de/geoserver/dwd/Icon_reg025_fd_sl_TOTPREC/wms?service=WMS&version=1.3.0&request=GetCapabilities';
   const BASE_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
   const LAYERS = {
     radar: {
@@ -20,7 +21,25 @@
       opacity: 0.72,
       title: 'DWD Niederschlagsprognose',
       legend: 'RV-Radar: Analyse und Niederschlagsvorhersage in 5-Minuten-Schritten.',
-      timeControl: true
+      timeControl: true,
+      capabilitiesUrl: FORECAST_CAPABILITIES_URL,
+      horizonHours: 2,
+      maxFrames: 25,
+      sourceLabel: 'DWD RV',
+      note: 'Radar-Nowcast: Zugrichtung vorhandener Niederschlagsfelder.'
+    },
+    model24: {
+      layer: 'dwd:Icon_reg025_fd_sl_TOTPREC',
+      styles: 'icon_reg025_fd_sl_totprec_wmc_isoarea',
+      opacity: 0.55,
+      title: 'DWD ICON 24h-Niederschlag',
+      legend: 'ICON-Modell: akkumulierte Niederschlagsprognose bis zum gewaehlten Zeitpunkt.',
+      timeControl: true,
+      capabilitiesUrl: ICON_24H_CAPABILITIES_URL,
+      horizonHours: 24,
+      maxFrames: 25,
+      sourceLabel: 'DWD ICON',
+      note: '24h-Planungsprognose: Modellansicht, keine Radarbeobachtung.'
     },
     warnings: {
       layer: 'dwd:Warnungen_Gemeinden_vereinigt',
@@ -52,7 +71,7 @@
   let currentFrame = null;
   let currentKey = '';
   let currentForecastIndex = -1;
-  let forecastFramesPromise = null;
+  const forecastFramePromises = new Map();
   let forecastFrames = [];
   let timer = null;
 
@@ -120,18 +139,33 @@
 
   function ensureForecastButton(host) {
     const actions = host.querySelector('.weather-v2-map-actions');
-    if (!actions || actions.querySelector('[data-weather-v2-action="layer:forecast"]')) return;
+    if (!actions) return;
+    const radar = actions.querySelector('[data-weather-v2-action="layer:radar"]');
+    const forecast = ensureLayerButton(actions, 'forecast', 'Prognose', radar);
+    ensureLayerButton(actions, 'model24', '24h', forecast);
+    syncInjectedButtonState(actions);
+  }
+
+  function ensureLayerButton(actions, key, label, afterElement) {
+    const existing = actions.querySelector(`[data-weather-v2-action="layer:${key}"]`);
+    if (existing) return existing;
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'mini-btn';
-    button.dataset.weatherV2Action = 'layer:forecast';
-    button.textContent = 'Prognose';
-    const radar = actions.querySelector('[data-weather-v2-action="layer:radar"]');
-    if (radar?.nextSibling) actions.insertBefore(button, radar.nextSibling);
+    button.dataset.weatherV2Action = `layer:${key}`;
+    button.textContent = label;
+    if (afterElement?.nextSibling) actions.insertBefore(button, afterElement.nextSibling);
+    else if (afterElement) actions.appendChild(button);
     else actions.prepend(button);
-    if (localStorage.getItem('leitstandWeatherLayer') === 'forecast' && !actions.querySelector('.active')) {
-      button.classList.add('active');
-    }
+    return button;
+  }
+
+  function syncInjectedButtonState(actions) {
+    const stored = localStorage.getItem('leitstandWeatherLayer');
+    if (!stored || !LAYERS[stored]) return;
+    actions.querySelectorAll('[data-weather-v2-action^="layer:"]').forEach(button => {
+      button.classList.toggle('active', button.dataset.weatherV2Action === `layer:${stored}`);
+    });
   }
 
   async function createMap(frame, key) {
@@ -248,21 +282,21 @@
     timeline.classList.add('is-visible');
     timeline.innerHTML = '<span>Niederschlagsprognose wird geladen ...</span>';
     try {
-      forecastFrames = await getForecastFrames();
+      forecastFrames = await getForecastFrames(selected);
       if (!forecastFrames.length) throw new Error('Keine Zeitschritte verfuegbar');
       const initialIndex = currentForecastIndex >= 0 ? currentForecastIndex : 0;
-      renderTimeline(Math.min(initialIndex, forecastFrames.length - 1));
+      renderTimeline(Math.min(initialIndex, forecastFrames.length - 1), false, selected);
     } catch (error) {
       console.warn('DWD-Zeitachse konnte nicht geladen werden', error);
-      forecastFrames = buildFallbackForecastFrames();
-      renderTimeline(0, true);
+      forecastFrames = buildFallbackForecastFrames(selected);
+      renderTimeline(0, true, selected);
     }
   }
 
-  function renderTimeline(index, fallback = false) {
+  function renderTimeline(index, fallback = false, selected = LAYERS.forecast) {
     const timeline = currentFrame?.querySelector('.weather-map-fix-timeline');
     if (!timeline || !weatherLayer || !forecastFrames.length) return;
-    const signature = `${forecastFrames.length}:${fallback ? 'fallback' : 'dwd'}`;
+    const signature = `${currentKey}:${forecastFrames.length}:${fallback ? 'fallback' : 'dwd'}`;
     if (timeline.dataset.timelineSignature !== signature) {
       timeline.dataset.timelineSignature = signature;
       timeline.innerHTML = `
@@ -271,13 +305,22 @@
           <span data-weather-time-source></span>
         </div>
         <input type="range" min="0" max="${forecastFrames.length - 1}" value="${index}" step="1" aria-label="Zeitpunkt der Niederschlagsprognose">
+        <div class="weather-map-fix-time-strip" aria-label="Zeitfenster der Prognose">
+          ${forecastFrames.map((frame, frameIndex) => `<button type="button" data-weather-frame="${frameIndex}" title="${frame.label}"></button>`).join('')}
+        </div>
         <div class="weather-map-fix-time-range">
           <span>${forecastFrames[0]?.short || ''}</span>
           <span>${forecastFrames[forecastFrames.length - 1]?.short || ''}</span>
         </div>
+        <p class="weather-map-fix-time-note">${selected.note}</p>
       `;
       timeline.querySelector('input')?.addEventListener('input', event => {
-        setForecastFrame(Number(event.currentTarget.value) || 0, fallback);
+        setForecastFrame(Number(event.currentTarget.value) || 0, fallback, selected);
+      });
+      timeline.querySelectorAll('[data-weather-frame]').forEach(button => {
+        button.addEventListener('click', event => {
+          renderTimeline(Number(event.currentTarget.dataset.weatherFrame) || 0, fallback, selected);
+        });
       });
     }
     const range = timeline.querySelector('input');
@@ -285,34 +328,43 @@
       range.max = String(forecastFrames.length - 1);
       range.value = String(index);
     }
-    setForecastFrame(index, fallback);
+    setForecastFrame(index, fallback, selected);
   }
 
-  function setForecastFrame(index, fallback = false) {
+  function setForecastFrame(index, fallback = false, selected = LAYERS.forecast) {
     if (!weatherLayer || !forecastFrames.length) return;
     const safeIndex = Math.max(0, Math.min(index, forecastFrames.length - 1));
     const frame = forecastFrames[safeIndex] || forecastFrames[0];
     currentForecastIndex = safeIndex;
-    weatherLayer.setParams({ time: frame.value }, false);
+    const params = { time: frame.value };
+    if (frame.referenceTime) params.REFERENCE_TIME = frame.referenceTime;
+    weatherLayer.setParams(params, false);
     const timeline = currentFrame?.querySelector('.weather-map-fix-timeline');
     const label = timeline?.querySelector('[data-weather-time-label]');
     const source = timeline?.querySelector('[data-weather-time-source]');
+    const range = timeline?.querySelector('input');
     if (label) label.textContent = frame.label;
-    if (source) source.textContent = fallback ? 'Fallback-Zeitachse' : 'DWD RV';
+    if (source) source.textContent = fallback ? 'Fallback-Zeitachse' : selected.sourceLabel;
+    if (range && range.value !== String(safeIndex)) range.value = String(safeIndex);
+    timeline?.querySelectorAll('[data-weather-frame]').forEach(button => {
+      button.classList.toggle('active', Number(button.dataset.weatherFrame) === safeIndex);
+    });
   }
 
-  function getForecastFrames() {
-    if (forecastFramesPromise) return forecastFramesPromise;
-    forecastFramesPromise = fetch(FORECAST_CAPABILITIES_URL)
+  function getForecastFrames(selected = LAYERS.forecast) {
+    const key = selected.capabilitiesUrl || FORECAST_CAPABILITIES_URL;
+    if (forecastFramePromises.has(key)) return forecastFramePromises.get(key);
+    const promise = fetch(key)
       .then(response => {
         if (!response.ok) throw new Error(`DWD Capabilities ${response.status}`);
         return response.text();
       })
-      .then(parseForecastFrames);
-    return forecastFramesPromise;
+      .then(xmlText => parseForecastFrames(xmlText, selected));
+    forecastFramePromises.set(key, promise);
+    return promise;
   }
 
-  function parseForecastFrames(xmlText) {
+  function parseForecastFrames(xmlText, selected = LAYERS.forecast) {
     const documentXml = new DOMParser().parseFromString(xmlText, 'application/xml');
     const dimensions = Array.from(documentXml.getElementsByTagName('Dimension'));
     const timeDimension = dimensions.find(item => item.getAttribute('name') === 'time');
@@ -320,16 +372,18 @@
     const [startText, endText, stepText] = (timeDimension?.textContent || '').trim().split('/');
     const referenceText = referenceDimension?.getAttribute('default') || startText;
     const start = new Date(referenceText);
-    const end = new Date(endText || referenceText);
+    const dimensionEnd = new Date(endText || referenceText);
+    const requestedEnd = new Date(start.getTime() + (selected.horizonHours || 2) * 60 * 60000);
+    const end = dimensionEnd < requestedEnd ? dimensionEnd : requestedEnd;
     const minutes = parseIsoStepMinutes(stepText || 'PT5M');
     if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || !minutes) {
-      return buildFallbackForecastFrames();
+      return buildFallbackForecastFrames(selected);
     }
     const frames = [];
-    for (let time = new Date(start); time <= end && frames.length < 31; time = new Date(time.getTime() + minutes * 60000)) {
-      frames.push(toForecastFrame(time));
+    for (let time = new Date(start); time <= end && frames.length < (selected.maxFrames || 25); time = new Date(time.getTime() + minutes * 60000)) {
+      frames.push(toForecastFrame(time, referenceText));
     }
-    return frames.length ? frames : buildFallbackForecastFrames();
+    return frames.length ? frames : buildFallbackForecastFrames(selected);
   }
 
   function parseIsoStepMinutes(value) {
@@ -338,17 +392,18 @@
     return (Number(match[1] || 0) * 60) + Number(match[2] || 0);
   }
 
-  function buildFallbackForecastFrames() {
+  function buildFallbackForecastFrames(selected = LAYERS.forecast) {
     const now = new Date();
     now.setSeconds(0, 0);
-    now.setMinutes(Math.floor(now.getMinutes() / 5) * 5);
-    return Array.from({ length: 25 }, (_, index) => toForecastFrame(new Date(now.getTime() + index * 5 * 60000)));
+    const stepMinutes = selected.horizonHours > 2 ? 60 : 5;
+    now.setMinutes(Math.floor(now.getMinutes() / stepMinutes) * stepMinutes);
+    return Array.from({ length: selected.maxFrames || 25 }, (_, index) => toForecastFrame(new Date(now.getTime() + index * stepMinutes * 60000)));
   }
 
-  function toForecastFrame(date) {
+  function toForecastFrame(date, referenceTime = '') {
     const label = new Intl.DateTimeFormat('de-DE', { weekday: 'short', hour: '2-digit', minute: '2-digit' }).format(date);
     const short = new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(date);
-    return { value: date.toISOString(), label, short };
+    return { value: date.toISOString(), referenceTime, label, short };
   }
 
   function onLegendToggle(event) {
@@ -460,6 +515,10 @@
       .weather-map-fix-time-head strong{font-size:.72rem;color:var(--text)}
       .weather-map-fix-time-head span,.weather-map-fix-time-range span,.weather-map-fix-timeline>span{font-size:.62rem;color:var(--muted);font-weight:800}
       .weather-map-fix-timeline input{width:100%;accent-color:#2563eb}
+      .weather-map-fix-time-strip{display:grid;grid-template-columns:repeat(25,1fr);gap:2px}
+      .weather-map-fix-time-strip button{height:7px;border:0;border-radius:999px;background:#d8e3ee;padding:0;cursor:pointer}
+      .weather-map-fix-time-strip button.active{background:#2563eb}
+      .weather-map-fix-time-note{margin:0;color:#4f6278;font-size:.62rem;line-height:1.18}
       .weather-map-fix-error{position:absolute;inset:auto 10px 10px 10px;z-index:650;border:1px solid #f2b8b8;border-radius:8px;background:#fff6f6;color:#9f1d1d;padding:8px;font-size:.75rem}
       #leitstandWeatherModule.has-weather-map-fix .weather-v2-current{grid-template-columns:auto minmax(92px,1.15fr) repeat(3,minmax(76px,.8fr))}
       #leitstandWeatherModule.has-weather-map-fix .weather-v2-days{grid-template-columns:repeat(7,minmax(82px,1fr));overflow-x:auto;padding-bottom:2px}
