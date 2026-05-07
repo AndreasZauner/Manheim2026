@@ -602,6 +602,7 @@ async function persistMindmapNow() {
   state.saving = true;
   renderHeaderStatusOnly();
   try {
+    await commitPendingMindmapEdit();
     const data = state.mind.getData();
     const entries = flattenMindNodes(data.nodeData);
     const idMap = new Map();
@@ -671,7 +672,7 @@ function flattenMindNodes(root) {
     const id = String(node.id || '').replace(/^me/, '');
     let nextContext = { ...context };
     if (id.startsWith('area-')) {
-      nextContext = { ...nextContext, area: normalizeArea(id.replace('area-', '')), parentNodeId: null };
+      nextContext = { ...nextContext, area: areaFromMindTopic(node.topic, id.replace('area-', '')), parentNodeId: null };
     } else if (id !== 'idea-lab-root') {
       entries.push({ node: { ...node, id }, area: nextContext.area, parentNodeId: nextContext.parentNodeId, sortOrder: nextContext.childIndex });
       nextContext = { ...nextContext, parentNodeId: id };
@@ -680,6 +681,15 @@ function flattenMindNodes(root) {
   };
   walk(root, { area: 'general', parentNodeId: null, childIndex: 0 });
   return entries;
+}
+
+function commitPendingMindmapEdit() {
+  const active = document.activeElement;
+  const editingMindmapTopic = active?.id === 'input-box' || active?.isContentEditable || active?.getAttribute?.('contenteditable') === 'plaintext-only';
+  if (!editingMindmapTopic) return Promise.resolve();
+  active.blur();
+  state.mind?.container?.focus?.();
+  return new Promise(resolve => window.setTimeout(resolve, 80));
 }
 
 function fitMindmap() {
@@ -730,6 +740,21 @@ function isVirtualMindNode(id) {
 function normalizeArea(area) {
   const key = String(area || 'general');
   return AREAS.some(([value]) => value === key) ? key : 'general';
+}
+
+function areaFromMindTopic(topic, fallback) {
+  const normalizedTopic = normalizeLookup(topic);
+  const match = AREAS.find(([value, label]) => normalizeLookup(value) === normalizedTopic || normalizeLookup(label) === normalizedTopic);
+  return match?.[0] || normalizeArea(fallback);
+}
+
+function normalizeLookup(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]/g, '');
 }
 
 function areaLabel(area) {
