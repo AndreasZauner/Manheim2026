@@ -31,7 +31,7 @@ async function installParticipantBootstrap() {
     );
     imports.push(
       import('./idea-lab-module.js?v=idea-lab-20260507-2')
-        .then(() => import('./idea-lab-edit-focus-fix.js?v=idea-lab-focus-20260507-1')
+        .then(() => import('./idea-lab-edit-focus-fix.js?v=idea-lab-focus-20260507-2')
           .catch(error => console.error('Ideenlabor-Fokusfix konnte nicht geladen werden', error)))
         .catch(error => console.error('Ideenlabor konnte nicht geladen werden', error))
     );
