@@ -30,7 +30,7 @@ async function installParticipantBootstrap() {
         .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
     );
     imports.push(
-      import('./idea-lab-module.js?v=idea-lab-20260507-1')
+      import('./idea-lab-module.js?v=idea-lab-20260507-2')
         .catch(error => console.error('Ideenlabor konnte nicht geladen werden', error))
     );
     imports.push(
