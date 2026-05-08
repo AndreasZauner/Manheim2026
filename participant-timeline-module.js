@@ -11,6 +11,8 @@ async function installParticipantBootstrap() {
     .catch(error => console.error('Login-Stabilisierung konnte nicht geladen werden', error));
   import('./personaleinsatz-cleanup-fix.js?v=personaleinsatz-cleanup-20260508-1')
     .catch(error => console.error('Personaleinsatz-Stabilisierung konnte nicht geladen werden', error));
+  import('./personal-share-view.js?v=personal-share-20260508-1')
+    .catch(error => console.error('Personal-Freigabe konnte nicht geladen werden', error));
   window.setTimeout(async () => {
     const imports = [];
     if (!window.__participantPlanningInstalled) {
