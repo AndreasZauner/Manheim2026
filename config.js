@@ -45,7 +45,7 @@ function wait(ms) {
 
 (function bootExtensions() {
   document.addEventListener('DOMContentLoaded', loadMapModule);
-  loadAttendanceModule();
+  document.addEventListener('DOMContentLoaded', scheduleAttendanceModule);
   loadParticipantTimelineModule();
   document.addEventListener('DOMContentLoaded', installModernAuthScreen);
   document.addEventListener('DOMContentLoaded', installIdeaFormHotfix);
@@ -73,6 +73,28 @@ function wait(ms) {
     script.type = 'module';
     script.src = './attendance-module.js?v=authlock-20260501-1';
     document.head.appendChild(script);
+  }
+
+  function scheduleAttendanceModule() {
+    if (isAppVisible()) {
+      loadAttendanceModule();
+      return;
+    }
+
+    const startedAt = Date.now();
+    const timer = window.setInterval(() => {
+      if (isAppVisible()) {
+        window.clearInterval(timer);
+        loadAttendanceModule();
+        return;
+      }
+      if (Date.now() - startedAt > 120000) window.clearInterval(timer);
+    }, 300);
+  }
+
+  function isAppVisible() {
+    const app = document.getElementById('app');
+    return Boolean(app && !app.classList.contains('hidden'));
   }
 
   function loadParticipantTimelineModule() {
