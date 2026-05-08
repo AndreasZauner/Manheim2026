@@ -1,4 +1,3 @@
-import './participant-timeline-module.js?v=timeline-20260429-1';
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 const EDIT_ROLES = ['admin', 'technical_lead', 'assistant'];
@@ -19,7 +18,9 @@ const state = {
   role: null,
   todayIso: '',
   participants: [],
-  attendance: []
+  attendance: [],
+  loadStarted: false,
+  loading: false
 };
 
 if (document.readyState === 'loading') {
@@ -36,7 +37,35 @@ async function installAttendanceModule() {
   renderSidebarShell();
   strengthenSignOutButton();
   injectAttendancePanel();
-  await loadAttendanceData();
+  scheduleAttendanceDataLoad();
+}
+
+function scheduleAttendanceDataLoad() {
+  if (state.loadStarted) return;
+  state.loadStarted = true;
+
+  if (isAppVisible()) {
+    loadAttendanceData();
+    return;
+  }
+
+  const startedAt = Date.now();
+  const timer = window.setInterval(() => {
+    if (isAppVisible()) {
+      window.clearInterval(timer);
+      loadAttendanceData();
+      return;
+    }
+    if (Date.now() - startedAt > 120000) {
+      window.clearInterval(timer);
+      state.loadStarted = false;
+    }
+  }, 300);
+}
+
+function isAppVisible() {
+  const app = document.getElementById('app');
+  return Boolean(app && !app.classList.contains('hidden'));
 }
 
 function injectStylesheet() {
@@ -88,19 +117,21 @@ function injectAttendancePanel() {
 }
 
 async function loadAttendanceData() {
+  if (state.loading) return;
   const config = window.APP_CONFIG;
   if (!config?.SUPABASE_URL || !config?.SUPABASE_ANON_KEY) {
     renderSidebarError('Supabase-Konfiguration fehlt.');
     return;
   }
 
+  state.loading = true;
   state.todayIso = getLocalIsoDate();
-  state.client = createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
+  state.client = window.getManheimSupabaseClient?.(createClient) || createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
 
   try {
-    const { data: sessionData, error: sessionError } = await state.client.auth.getSession();
+    const { data: sessionData, error: sessionError } = await getAuthSession();
     if (sessionError) throw sessionError;
     state.userId = sessionData?.session?.user?.id || null;
     if (!state.userId) {
@@ -125,7 +156,13 @@ async function loadAttendanceData() {
   } catch (error) {
     renderSidebarError(error?.message || String(error));
     renderAttendancePanelError(error?.message || String(error));
+  } finally {
+    state.loading = false;
   }
+}
+
+function getAuthSession() {
+  return window.getManheimAuthSession?.(state.client) || state.client.auth.getSession();
 }
 
 function renderAll() {
