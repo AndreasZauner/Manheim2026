@@ -2,8 +2,12 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 
 const PROJECT_START = new Date('2026-07-27T00:00:00');
 const PROJECT_END = new Date('2026-10-09T00:00:00');
+const TARGET_ATTENDANCE = 10;
+const CRITICAL_ATTENDANCE = 6;
+const MAX_Y = 15;
 const REFRESH_MS = 60000;
-let state = { client: null, password: '', snapshot: null, error: '' };
+
+let state = { client: null, password: '', snapshot: null, error: '', search: '', status: 'all', sort: 'role' };
 
 function isShareRoute() {
   const params = new URLSearchParams(window.location.search);
@@ -38,11 +42,17 @@ function renderRoot() {
 }
 
 function injectStyles() {
+  if (!document.querySelector('link[href^="./participant-planning-module.css"]')) {
+    const link = document.createElement('link');
+    link.rel = 'stylesheet';
+    link.href = './participant-planning-module.css?v=planning-20260504-2';
+    document.head.appendChild(link);
+  }
   if (document.getElementById('personalShareStyles')) return;
   const style = document.createElement('style');
   style.id = 'personalShareStyles';
   style.textContent = `
-    body.personal-share-mode{margin:0;background:#edf4fb;color:#0b2540;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.personal-share-root{min-height:100vh;padding:28px;box-sizing:border-box}.personal-share-shell{max-width:1480px;margin:0 auto}.personal-share-card{background:#fff;border:1px solid #d4e2ee;border-radius:12px;box-shadow:0 20px 55px rgba(18,44,71,.12)}.personal-share-login{width:min(520px,100%);margin:12vh auto 0;padding:28px}.personal-share-login h1,.personal-share-header h1{margin:0;font-size:30px;letter-spacing:0}.personal-share-muted{color:#526a80;line-height:1.45}.personal-share-form{display:grid;gap:14px;margin-top:22px}.personal-share-form label{display:grid;gap:7px;font-weight:700}.personal-share-form input{border:1px solid #c9d9e6;border-radius:9px;font:inherit;padding:12px 14px}.personal-share-button{border:0;border-radius:9px;background:#2378d5;color:#fff;cursor:pointer;font:inherit;font-weight:800;padding:12px 16px}.personal-share-button:disabled{opacity:.65;cursor:wait}.personal-share-error{min-height:20px;color:#b42318;font-weight:700}.personal-share-header{display:grid;grid-template-columns:minmax(240px,1fr) auto;gap:22px;align-items:end;margin-bottom:18px}.personal-share-badge{display:inline-flex;border-radius:999px;background:#e7f7ed;border:1px solid #bde6ca;color:#046c38;font-weight:800;padding:9px 14px;white-space:nowrap}.personal-share-kpis{display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:12px;margin-bottom:16px}.personal-share-kpi{padding:14px}.personal-share-kpi span{display:block;color:#60778d;font-size:12px;font-weight:800;text-transform:uppercase}.personal-share-kpi strong{display:block;margin-top:4px;font-size:28px}.personal-share-table{overflow:hidden}.personal-share-table-head,.personal-share-row{display:grid;grid-template-columns:1.1fr .8fr 1fr 1.45fr 1.5fr}.personal-share-table-head{background:#18324a;color:#fff;font-size:12px;font-weight:900;text-transform:uppercase}.personal-share-table-head div,.personal-share-cell{padding:12px 14px;border-bottom:1px solid #dbe7f0}.personal-share-row:nth-child(odd){background:#f8fbfd}.personal-share-name{display:grid;gap:5px}.personal-share-name strong{font-size:16px}.personal-share-status{display:inline-flex;width:fit-content;border-radius:999px;padding:4px 9px;font-size:12px;font-weight:900}.personal-share-status.gesetzt{background:#dff5e7;color:#086034}.personal-share-status.zugesagt{background:#dbeafe;color:#1e4f95}.personal-share-status.unklar,.personal-share-status.zu-klaeren{background:#fff1d6;color:#995d00}.personal-share-status.anzufragen{background:#e7edf3;color:#4b5d6f}.personal-share-timeline{position:relative;height:22px;border:1px solid #cbdbe8;border-radius:999px;background:repeating-linear-gradient(to right,#f6f9fc 0,#f6f9fc calc(9.09% - 1px),#dce7f0 calc(9.09% - 1px),#dce7f0 9.09%);overflow:hidden;margin-bottom:6px}.personal-share-bar,.personal-share-absence{position:absolute;top:4px;height:14px;border-radius:999px}.personal-share-bar.gesetzt{background:#2f855a}.personal-share-bar.zugesagt{background:#2b6cb0}.personal-share-bar.unklar,.personal-share-bar.zu-klaeren{background:#c98216}.personal-share-bar.anzufragen{background:#6b7785}.personal-share-absence{background:#dc2626;opacity:.86;z-index:2}.personal-share-note{color:#526a80;line-height:1.35;white-space:pre-wrap}.personal-share-empty{padding:22px;color:#526a80}@media(max-width:980px){.personal-share-root{padding:14px}.personal-share-header,.personal-share-table-head,.personal-share-row{grid-template-columns:1fr}.personal-share-table-head{display:none}.personal-share-kpis{grid-template-columns:repeat(2,1fr)}.personal-share-cell::before{content:attr(data-label);display:block;margin-bottom:4px;color:#60778d;font-size:11px;font-weight:900;text-transform:uppercase}}
+    body.personal-share-mode{margin:0;background:#edf4fb;color:#0b2540;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.personal-share-root{--border:#d4e2ee;--muted:#526a80;--shadow:0 20px 55px rgba(18,44,71,.12);min-height:100vh;padding:28px;box-sizing:border-box}.personal-share-shell{max-width:1480px;margin:0 auto;display:grid;gap:18px}.personal-share-card{background:#fff;border:1px solid #d4e2ee;border-radius:12px;box-shadow:var(--shadow)}.personal-share-login{width:min(520px,100%);margin:12vh auto 0;padding:28px}.personal-share-login h1,.personal-share-title h1{margin:0;font-size:30px;letter-spacing:0}.personal-share-muted{color:#526a80;line-height:1.45}.personal-share-form{display:grid;gap:14px;margin-top:22px}.personal-share-form label{display:grid;gap:7px;font-weight:700}.personal-share-form input{border:1px solid #c9d9e6;border-radius:9px;font:inherit;padding:12px 14px}.personal-share-button{border:0;border-radius:9px;background:#2378d5;color:#fff;cursor:pointer;font:inherit;font-weight:800;padding:12px 16px}.personal-share-button:disabled{opacity:.65;cursor:wait}.personal-share-error{min-height:20px;color:#b42318;font-weight:700}.personal-share-header{display:grid;grid-template-columns:minmax(260px,1fr) minmax(520px,650px) auto;gap:20px;align-items:start}.personal-share-title{padding-top:10px}.personal-share-badge,.personal-share-readonly-note{display:inline-flex;width:fit-content;border-radius:999px;font-weight:800;white-space:nowrap}.personal-share-badge{background:#e7f7ed;border:1px solid #bde6ca;color:#046c38;padding:9px 14px;margin-top:10px}.personal-share-readonly-note{background:#eef6ff;border:1px solid #cfe1f4;color:#1f5f99;font-size:12px;padding:5px 10px;margin-top:10px}.personal-share-chart.chart-card{width:100%;border:1px solid rgba(166,125,65,.32);background:#fffaf1;border-radius:16px;padding:12px 14px 8px;box-shadow:0 16px 35px rgba(72,54,30,.11);box-sizing:border-box}.personal-share-chart .chart-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:6px}.personal-share-chart .eyebrow{font-size:10px;font-weight:800;color:#7a6b59;text-transform:uppercase;letter-spacing:.08em}.personal-share-chart .chart-head strong{display:block;color:#2f2a24;font-size:15px}.personal-share-chart .kpis{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.personal-share-chart .kpis span{border-radius:999px;border:1px solid rgba(47,42,36,.08);background:rgba(255,255,255,.82);padding:3px 8px;font-size:12px;color:#6d5d4c}.personal-share-chart .kpis strong{color:#2f2a24}.personal-share-chart .chart-wrap{width:100%;height:172px;border:1px solid rgba(47,42,36,.08);border-radius:10px;background:#fff;overflow:hidden}.personal-share-chart svg{width:100%;height:100%;display:block}.personal-share-chart .tick-label{fill:#766b5d;font-size:10px}.personal-share-chart .grid-line{stroke:rgba(47,42,36,.12);stroke-width:1}.personal-share-chart .attendance-line{fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round}.personal-share-chart .line-normal{stroke:#2563eb}.personal-share-chart .line-target{stroke:#16a34a}.personal-share-chart .line-critical{stroke:#dc2626}.personal-share-chart .target-line{stroke:#16a34a;stroke-width:2;stroke-dasharray:8 6}.personal-share-chart .critical-band{fill:rgba(220,38,38,.16)}.personal-share-chart .critical-boundary{stroke:rgba(220,38,38,.45);stroke-width:1.2;stroke-dasharray:5 5}.personal-share-chart .target-text{fill:#166534;font-size:10px;font-weight:800}.personal-share-root .personnel-topbar{margin-top:0}.personal-share-root .personnel-controls .personnel-select,.personal-share-root .personnel-controls .personnel-search{min-height:42px}.personal-share-root .personnel-role{border:0;background:transparent;padding:0;text-align:left;cursor:default}.personal-share-root .personnel-note{display:grid;gap:3px}.personal-share-root .personnel-note small{color:#60778d;line-height:1.35}.personal-share-root .personnel-note strong{color:#0b2540}.personal-share-root .personnel-badge.status-erweiterbar{background:#e9f1fb;color:#2b6cb0}.personal-share-root .personnel-badge.status-unklar{background:#fff4e5;color:#c98216}.personal-share-root .personnel-swatch.red{background:#dc2626}.personal-share-absence{position:absolute;top:4px;height:18px;border-radius:999px;background:#dc2626;opacity:.86;z-index:3}@media(max-width:1180px){.personal-share-header{grid-template-columns:1fr}.personal-share-badge{margin-top:0}}@media(max-width:760px){.personal-share-root{padding:14px}.personal-share-chart .chart-head{display:block}.personal-share-chart .kpis{justify-content:flex-start;margin-top:6px}.personal-share-chart .chart-wrap{height:150px}}
   `;
   document.head.appendChild(style);
 }
@@ -53,10 +63,10 @@ function renderLocked() {
   root.innerHTML = `
     <section class="personal-share-login personal-share-card">
       <h1>Personalstand</h1>
-      <p class="personal-share-muted">Vertrauliche Live-Ansicht der Personalplanung Kerpen-Manheim 2026. Der Link ist nur lesend, Aenderungen werden in der internen App vorgenommen.</p>
+      <p class="personal-share-muted">Vertrauliche Live-Ansicht der Personalplanung Kerpen-Manheim 2026. Der Link ist nur lesend, Änderungen werden in der internen App vorgenommen.</p>
       <form id="personalShareForm" class="personal-share-form">
         <label>Passwort<input name="password" type="password" autocomplete="current-password" required autofocus></label>
-        <button class="personal-share-button" type="submit">Personalstand oeffnen</button>
+        <button class="personal-share-button" type="submit">Personalstand öffnen</button>
         <div class="personal-share-error">${escapeHtml(state.error)}</div>
       </form>
     </section>`;
@@ -80,9 +90,17 @@ async function loadShare() {
     window.__personalShareRefreshTimer = window.setInterval(loadShareQuietly, REFRESH_MS);
   } catch (error) {
     console.error('Personalstand konnte nicht geladen werden', error);
-    state.error = 'Personalstand konnte nicht geladen werden. Bitte Passwort pruefen.';
+    state.error = getShareErrorMessage(error);
     renderLocked();
   }
+}
+
+function getShareErrorMessage(error) {
+  const message = String(error?.message || error || '');
+  const code = String(error?.code || '');
+  if (code === 'PGRST202' || /get_personal_share_snapshot|schema cache|function .*not found/i.test(message)) return 'Personal-Viewer ist in Supabase noch nicht eingerichtet. Bitte supabase/personal_share_module.sql ausführen und danach kurz warten.';
+  if (code === '28000' || /ungueltiges passwort|ungültiges passwort|invalid password/i.test(message)) return 'Personalstand konnte nicht geladen werden. Bitte Passwort prüfen.';
+  return 'Personalstand konnte nicht geladen werden. Bitte Setup und Verbindung prüfen.';
 }
 
 async function loadShareQuietly() {
@@ -100,75 +118,82 @@ function renderUnlocked() {
   hideApp();
   const root = document.getElementById('personalShareRoot');
   const people = normalizePeople(state.snapshot?.participants || []);
-  const kpis = buildKpis(people);
+  const list = getFilteredPeople(people);
   root.innerHTML = `
     <div class="personal-share-shell">
-      <header class="personal-share-header"><div><h1>Personalstand Kerpen-Manheim 2026</h1><p class="personal-share-muted">Live-Nur-Lese-Ansicht mit Kontaktinformationen, Hinweisen, Zeitraeumen und Ausfaellen. Stand: ${escapeHtml(formatDateTime(state.snapshot?.generated_at))}</p></div><div class="personal-share-badge">Live aus Supabase</div></header>
-      <section class="personal-share-kpis">${kpis.map(item => `<div class="personal-share-card personal-share-kpi"><span>${escapeHtml(item.label)}</span><strong>${item.value}</strong></div>`).join('')}</section>
-      <section class="personal-share-card personal-share-table"><div class="personal-share-table-head"><div>Person</div><div>Status</div><div>Kontakt</div><div>Zeitraum</div><div>Hinweise / Notizen</div></div>${people.length ? people.map(renderPerson).join('') : '<div class="personal-share-empty">Noch keine Personen vorhanden.</div>'}</section>
+      <header class="personal-share-header">
+        <div class="personal-share-title"><h1>Personal</h1><p class="personal-share-muted">Personaleinsatz, Zeiträume, Verbindlichkeit und Hinweise</p><span class="personal-share-readonly-note">Nur-Lese-Ansicht · Stand: ${escapeHtml(formatDateTime(state.snapshot?.generated_at))}</span></div>
+        <section class="personal-share-chart chart-card" aria-label="Diagramm zur täglichen Anwesenheit des Personals">${renderChartCard(buildDailySeries(people))}</section>
+        <div class="personal-share-badge">Live aus Supabase</div>
+      </header>
+      <section class="personnel-hero"><div><div class="personnel-eyebrow">Personal</div><h3>Personaleinsatz</h3><p>Zeiträume, Status und Hinweise im Überblick. Die Balken basieren auf den echten Supabase-Teilnehmerdaten.</p></div></section>
+      <div class="personnel-topbar"><div class="personnel-summary">${summaryCards(list)}</div><div class="personnel-controls"><input id="personnelShareSearch" class="personnel-search" type="text" placeholder="Nach Namen suchen ..." value="${escapeHtml(state.search)}"><select id="personnelShareStatusFilter" class="personnel-select">${statusOptions(people).map(item => `<option value="${escapeHtml(item.value)}" ${state.status === item.value ? 'selected' : ''}>${escapeHtml(item.label)}</option>`).join('')}</select><select id="personnelShareSortBy" class="personnel-select"><option value="role" ${state.sort === 'role' ? 'selected' : ''}>Nach Rolle / Start</option><option value="start" ${state.sort === 'start' ? 'selected' : ''}>Nach Startdatum</option><option value="name" ${state.sort === 'name' ? 'selected' : ''}>Alphabetisch</option><option value="status" ${state.sort === 'status' ? 'selected' : ''}>Nach Status</option><option value="problem" ${state.sort === 'problem' ? 'selected' : ''}>Klärungsbedarf zuerst</option></select></div></div>
+      <section class="personnel-board"><div class="personnel-board-header"><div class="personnel-left-head"><h3>Teilnehmende</h3><p>Name, Rolle, Status und Zusatzhinweise</p></div><div class="personnel-right-head"><h3>Gesamtzeitraum der Grabung: 27.07.2026 - 09.10.2026</h3><p>Der farbige Balken zeigt den jeweils geplanten Teilnahmezeitraum.</p></div></div><div class="personnel-rows">${list.length ? list.map(renderPerson).join('') : '<div class="personnel-empty">Keine Personen für diese Auswahl gefunden.</div>'}</div><div class="personnel-legend"><span><i class="personnel-swatch green"></i>gesetzt</span><span><i class="personnel-swatch blue"></i>zugesagt</span><span><i class="personnel-swatch orange"></i>zu klären / unklar</span><span><i class="personnel-swatch gray"></i>anzufragen</span><span><i class="personnel-swatch red"></i>Ausfall</span></div></section>
     </div>`;
+  bindReadOnlyUi();
 }
 
-function normalizePeople(people) {
-  return [...people].sort((a, b) => roleRank(a.public_role) - roleRank(b.public_role) || compareDate(firstSlot(a)?.availability_from, firstSlot(b)?.availability_from) || String(a.full_name || '').localeCompare(String(b.full_name || ''), 'de'));
+function bindReadOnlyUi() {
+  document.getElementById('personnelShareSearch')?.addEventListener('input', event => { state.search = event.target.value; renderUnlocked(); });
+  document.getElementById('personnelShareStatusFilter')?.addEventListener('change', event => { state.status = event.target.value; renderUnlocked(); });
+  document.getElementById('personnelShareSortBy')?.addEventListener('change', event => { state.sort = event.target.value; renderUnlocked(); });
 }
+
+function normalizePeople(people) { return people.map(person => ({ ...person, status: normalizeStatus(person.status), slots: slotsFor(person) })); }
+function getFilteredPeople(people) { const query = state.search.trim().toLowerCase(); return [...people].filter(person => !query || String(person.full_name || '').toLowerCase().includes(query)).filter(person => state.status === 'all' || person.status === state.status).sort(comparePeople); }
+function comparePeople(a, b) { if (state.sort === 'role') return roleRank(a.public_role) - roleRank(b.public_role) || compareDates(firstSlot(a)?.availability_from, firstSlot(b)?.availability_from) || compareNames(a, b); if (state.sort === 'name') return compareNames(a, b); if (state.sort === 'status') return statusRank(a.status) - statusRank(b.status) || compareNames(a, b); if (state.sort === 'problem') return Number(hasProblem(b)) - Number(hasProblem(a)) || compareDates(firstSlot(a)?.availability_from, firstSlot(b)?.availability_from); return compareDates(firstSlot(a)?.availability_from, firstSlot(b)?.availability_from) || compareNames(a, b); }
+function compareNames(a, b) { return String(a.full_name || '').localeCompare(String(b.full_name || ''), 'de'); }
 
 function renderPerson(person) {
-  const slots = getSlots(person);
-  const absences = Array.isArray(person.absences) ? person.absences : [];
+  const ranges = rangesFor(person);
   const privateData = person.private || {};
-  const notes = [person.availability_note, person.source_note, privateData.internal_note].filter(Boolean).join('\n');
-  return `<article class="personal-share-row"><div class="personal-share-cell personal-share-name" data-label="Person"><strong>${escapeHtml(person.full_name || 'Ohne Namen')}</strong><span>${escapeHtml(person.public_role || 'Teilnehmende')}</span></div><div class="personal-share-cell" data-label="Status"><span class="personal-share-status ${escapeHtml(statusClass(person.status))}">${escapeHtml(prettyStatus(person.status))}</span></div><div class="personal-share-cell personal-share-note" data-label="Kontakt">${escapeHtml([privateData.email, privateData.phone].filter(Boolean).join('\n') || '-')}</div><div class="personal-share-cell" data-label="Zeitraum"><div class="personal-share-timeline">${slots.map(slot => renderRange(slot, `personal-share-bar ${statusClass(person.status)}`)).join('')}${absences.map(renderAbsence).join('')}</div><div class="personal-share-note">${escapeHtml(slots.map(slot => `${formatDate(slot.availability_from)} - ${formatDate(slot.availability_to)}`).join('\n') || 'offen')}</div></div><div class="personal-share-cell personal-share-note" data-label="Hinweise / Notizen">${escapeHtml(notes || '-')}${absences.length ? `<br><br><strong>Ausfaelle:</strong><br>${escapeHtml(absences.map(formatAbsence).join('\n'))}` : ''}</div></article>`;
+  const absences = Array.isArray(person.absences) ? person.absences : [];
+  const note = [person.availability_note, privateData.internal_note, person.source_note].filter(Boolean).join(' · ');
+  const contact = [privateData.email, privateData.phone].filter(Boolean).join(' · ');
+  const timeline = ranges.length ? `<div class="personnel-timeline">${ranges.map((range, index) => `<div class="personnel-bar personnel-bar-segment ${barColor(person.status)}" style="left:${range.left}%;width:${range.width}%">${index === 0 ? escapeHtml(formatSlotSummary(person)) : ''}</div>`).join('')}${absences.map(renderAbsenceBar).join('')}</div>` : '<div class="personnel-unclear">Zeitraum unklar / uneinheitlich</div>';
+  const notes = [note ? `<small><strong>Hinweise:</strong> ${escapeHtml(shorten(note, 220))}</small>` : '', absences.length ? `<small><strong>Ausfälle:</strong> ${escapeHtml(absences.map(formatAbsence).join(' · '))}</small>` : ''].filter(Boolean).join('');
+  return `<article class="personnel-row"><div class="personnel-person"><div class="personnel-person-top"><strong>${escapeHtml(person.full_name || 'Ohne Namen')}</strong><span class="personnel-badge ${statusClass(person.status)}">${escapeHtml(prettyStatus(person.status))}</span></div><span class="personnel-role">${escapeHtml(person.public_role || 'Teilnehmende')}</span><div class="personnel-meta"><span class="personnel-badge outline">${escapeHtml(formatSlotSummary(person))}</span>${hasProblem(person) ? '<span class="personnel-badge warning">Klärungsbedarf</span>' : ''}${contact ? `<span class="personnel-badge outline">${escapeHtml(contact)}</span>` : ''}</div></div><div class="personnel-timeline-cell"><div class="personnel-timeline-wrap">${timeline}${notes ? `<div class="personnel-note">${notes}</div>` : ''}</div></div></article>`;
 }
 
-function renderRange(slot, className) {
-  const range = buildRange(slot.availability_from, slot.availability_to);
-  return range.valid ? `<span class="${className}" style="left:${range.left}%;width:${range.width}%"></span>` : '';
+function summaryCards(list) {
+  const finalConfirmed = list.filter(person => rangesFor(person).length && !hasProblem(person) && !['anzufragen', 'zu_klaeren', 'unklar'].includes(person.status)).length;
+  const expandable = list.filter(person => person.status === 'erweiterbar' || /auch|evtl|eventuell|moeglich|möglich|verlänger|verlaenger|zusatzwoche|flexibel|spätere termine|spaetere termine/i.test(noteText(person))).length;
+  const values = [['Gesamt', list.length], ['Final bestätigt', finalConfirmed], ['Erweiterbar', expandable], ['Klärungsbedarf', list.filter(hasProblem).length], ['Mit Anmerkung', list.filter(person => Boolean(noteText(person))).length]];
+  return values.map(([label, value]) => `<div class="personnel-stat"><span>${escapeHtml(label)}</span><strong>${value}</strong></div>`).join('');
 }
 
-function renderAbsence(absence) {
-  const range = buildRange(absence.absence_from, absence.absence_to);
-  return range.valid ? `<span class="personal-share-absence" title="${escapeHtml(formatAbsence(absence))}" style="left:${range.left}%;width:${range.width}%"></span>` : '';
-}
-
-function buildRange(from, to) {
-  const start = parseDate(from);
-  const end = parseDate(to);
-  const total = PROJECT_END - PROJECT_START;
-  if (!start || !end || end < start) return { valid: false, left: 0, width: 0 };
-  const clippedStart = new Date(Math.max(start, PROJECT_START));
-  const clippedEnd = new Date(Math.min(end, PROJECT_END));
-  if (clippedEnd < PROJECT_START || clippedStart > PROJECT_END) return { valid: false, left: 0, width: 0 };
-  const left = clamp(((clippedStart - PROJECT_START) / total) * 100, 0, 100);
-  const width = clamp(((clippedEnd - clippedStart) / total) * 100, 2, 100 - left);
-  return { valid: true, left, width };
-}
-
-function buildKpis(people) {
-  return [
-    { label: 'Gesamt', value: people.length },
-    { label: 'Zugesagt', value: people.filter(person => person.status === 'zugesagt').length },
-    { label: 'Gesetzt', value: people.filter(person => person.status === 'gesetzt').length },
-    { label: 'Unklar', value: people.filter(person => ['unklar', 'zu_klären', 'anzufragen'].includes(person.status)).length },
-    { label: 'Mit Ausfaellen', value: people.filter(person => Array.isArray(person.absences) && person.absences.length).length }
-  ];
-}
-
-function getSlots(person) {
-  if (Array.isArray(person.slots) && person.slots.length) return person.slots;
-  if (person.availability_from || person.availability_to) return [{ availability_from: person.availability_from, availability_to: person.availability_to }];
-  return [];
-}
-function firstSlot(person) { return getSlots(person)[0] || {}; }
-function roleRank(role) { const text = String(role || '').toLowerCase(); if (/grabungsleit|professor|projektleit/.test(text)) return 0; if (/technische/.test(text)) return 1; if (/assist/.test(text)) return 2; if (/schnitt/.test(text)) return 3; if (/doku|dokument/.test(text)) return 4; if (/logistik|infra/.test(text)) return 5; if (/teilnehm|student/.test(text)) return 6; return 9; }
-function prettyStatus(status) { return ({ gesetzt: 'gesetzt', zugesagt: 'zugesagt', unklar: 'unklar', 'zu_klären': 'zu klaeren', anzufragen: 'anzufragen' })[status] || status || '-'; }
-function statusClass(status) { return status === 'zu_klären' ? 'zu-klaeren' : String(status || 'unklar'); }
+function statusOptions(people) { const known = [['all', 'Alle Status'], ['gesetzt', 'gesetzt'], ['zugesagt', 'zugesagt'], ['erweiterbar', 'erweiterbar'], ['unklar', 'unklar'], ['zu_klaeren', 'zu klären'], ['anzufragen', 'anzufragen']]; const extra = new Set(people.map(person => person.status).filter(Boolean)); known.forEach(([value]) => extra.delete(value)); return [...known.map(([value, label]) => ({ value, label })), ...[...extra].sort().map(value => ({ value, label: prettyStatus(value) }))]; }
+function buildDailySeries(people) { const counted = people.filter(person => slotsFor(person).length && isCountedStatus(person.status)); return eachProjectDay().map(day => ({ ...day, count: counted.filter(person => slotsFor(person).some(slot => isWithin(day.date, slot.availability_from, slot.availability_to)) && !hasAbsenceOnDay(person, day.date)).length })); }
+function eachProjectDay() { const days = []; for (let date = new Date(PROJECT_START); date <= PROJECT_END; date.setDate(date.getDate() + 1)) { const copy = new Date(date); days.push({ date: copy, label: copy.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' }) }); } return days; }
+function renderChartCard(daily) { const stats = chartStats(daily); return `<div class="chart-head"><div><div class="eyebrow">Personal · Anwesenheit</div><strong>Tägliche Personalstärke</strong></div><div class="kpis" aria-label="Kennzahlen"><span><strong>${stats.avg}</strong> Ø</span><span><strong>${stats.max}</strong> Max</span><span><strong>${stats.criticalDays}</strong> kritisch</span></div></div><div class="chart-wrap">${renderSvg(daily)}</div>`; }
+function renderSvg(daily) { const width = 620, height = 172, margin = { top: 18, right: 24, bottom: 28, left: 34 }; const chartW = width - margin.left - margin.right, chartH = height - margin.top - margin.bottom; const maxY = Math.max(MAX_Y, Math.ceil(Math.max(...daily.map(day => day.count), TARGET_ATTENDANCE) / 3) * 3); const x = index => margin.left + (index / Math.max(daily.length - 1, 1)) * chartW; const y = value => margin.top + chartH - (value / maxY) * chartH; const criticalTop = y(CRITICAL_ATTENDANCE); const ticks = buildTicks(maxY).filter(tick => tick === 0 || tick === CRITICAL_ATTENDANCE || tick === TARGET_ATTENDANCE || tick === maxY); const dateStep = daily.length > 55 ? 14 : daily.length > 28 ? 7 : 4; return `<svg class="attendance-chart" viewBox="0 0 ${width} ${height}" role="img"><title>Liniendiagramm der täglichen Personal-Anwesenheit</title>${ticks.map(tick => `<line x1="${margin.left}" x2="${width - margin.right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}" class="grid-line"></line><text x="${margin.left - 9}" y="${(y(tick) + 3).toFixed(1)}" text-anchor="end" class="tick-label">${tick}</text>`).join('')}<rect x="${margin.left}" y="${criticalTop.toFixed(1)}" width="${chartW}" height="${(y(0) - criticalTop).toFixed(1)}" class="critical-band"></rect><line x1="${margin.left}" x2="${width - margin.right}" y1="${y(CRITICAL_ATTENDANCE).toFixed(1)}" y2="${y(CRITICAL_ATTENDANCE).toFixed(1)}" class="critical-boundary"></line><line x1="${margin.left}" x2="${width - margin.right}" y1="${y(TARGET_ATTENDANCE).toFixed(1)}" y2="${y(TARGET_ATTENDANCE).toFixed(1)}" class="target-line"></line><text x="${width - margin.right}" y="${(y(TARGET_ATTENDANCE) - 5).toFixed(1)}" text-anchor="end" class="target-text">Ziel 10</text>${lineSegments(daily, x, y).map(segment => `<path d="${segment.path}" class="attendance-line ${segment.color}"></path>`).join('')}${daily.map((day, index) => index !== 0 && index !== daily.length - 1 && index % dateStep !== 0 ? '' : `<text x="${x(index).toFixed(1)}" y="${height - margin.bottom + 18}" text-anchor="middle" class="tick-label x">${escapeHtml(day.label)}</text>`).join('')}</svg>`; }
+function lineSegments(daily, x, y) { const parts = []; for (let index = 1; index < daily.length; index += 1) { const a = { x: x(index - 1), y: y(daily[index - 1].count), count: daily[index - 1].count, ratio: 0 }, b = { x: x(index), y: y(daily[index].count), count: daily[index].count, ratio: 1 }; const points = [a]; [CRITICAL_ATTENDANCE, TARGET_ATTENDANCE].forEach(threshold => { if ((a.count < threshold && b.count > threshold) || (a.count > threshold && b.count < threshold)) { const ratio = (threshold - a.count) / (b.count - a.count); points.push({ x: a.x + (b.x - a.x) * ratio, y: y(threshold), count: threshold, ratio }); } }); points.push(b); points.sort((aPoint, bPoint) => aPoint.ratio - bPoint.ratio).slice(0, -1).forEach((point, pointIndex) => { const next = points[pointIndex + 1]; const midpoint = (point.count + next.count) / 2; parts.push({ color: midpoint <= CRITICAL_ATTENDANCE ? 'line-critical' : midpoint >= TARGET_ATTENDANCE ? 'line-target' : 'line-normal', path: `M ${point.x.toFixed(1)} ${point.y.toFixed(1)} L ${next.x.toFixed(1)} ${next.y.toFixed(1)}` }); }); } return parts; }
+function chartStats(daily) { const counts = daily.map(day => day.count); return { max: Math.max(...counts, 0), avg: counts.length ? (counts.reduce((sum, value) => sum + value, 0) / counts.length).toFixed(1).replace('.', ',') : '0', criticalDays: counts.filter(value => value <= CRITICAL_ATTENDANCE).length }; }
+function buildTicks(maxY) { const ticks = []; const step = maxY <= 15 ? 3 : Math.ceil(maxY / 5); for (let tick = 0; tick <= maxY; tick += step) ticks.push(tick); ticks.push(CRITICAL_ATTENDANCE, TARGET_ATTENDANCE); return [...new Set(ticks)].sort((a, b) => a - b); }
+function rangesFor(person) { return slotsFor(person).map(slot => buildRange(parseDate(slot.availability_from), parseDate(slot.availability_to))).filter(range => range.valid); }
+function buildRange(start, end) { const total = PROJECT_END - PROJECT_START; if (!start || !end || end < start || end < PROJECT_START || start > PROJECT_END) return { valid: false, left: 0, width: 0 }; const clippedStart = new Date(Math.max(start, PROJECT_START)); const clippedEnd = new Date(Math.min(end, PROJECT_END)); const left = clamp(((clippedStart - PROJECT_START) / total) * 100, 0, 100); const width = clamp(((clippedEnd - clippedStart) / total) * 100, 4, 100 - left); return { valid: true, left, width }; }
+function renderAbsenceBar(absence) { const range = buildRange(parseDate(absence.absence_from), parseDate(absence.absence_to)); return range.valid ? `<span class="personal-share-absence" title="${escapeHtml(formatAbsence(absence))}" style="left:${range.left}%;width:${range.width}%"></span>` : ''; }
+function slotsFor(person) { if (Array.isArray(person.slots) && person.slots.length) return person.slots; return person.availability_from || person.availability_to ? [{ availability_from: person.availability_from, availability_to: person.availability_to }] : []; }
+function firstSlot(person) { return slotsFor(person)[0] || {}; }
+function hasAbsenceOnDay(person, day) { return (Array.isArray(person.absences) ? person.absences : []).some(absence => isWithin(day, absence.absence_from, absence.absence_to)); }
+function isWithin(day, from, to) { const start = parseDate(from), end = parseDate(to); return Boolean(start && end && day >= start && day <= end); }
+function isCountedStatus(status) { return ['gesetzt', 'zugesagt', 'erweiterbar', 'zu_klaeren', 'unklar'].includes(normalizeStatus(status)); }
+function normalizeStatus(status) { return String(status || '').trim().toLowerCase().replaceAll('ä', 'ae').replaceAll('ö', 'oe').replaceAll('ü', 'ue').replaceAll('Ã¤', 'ae').replaceAll('Ã¶', 'oe').replaceAll('Ã¼', 'ue').replaceAll(' ', '_').replaceAll('-', '_'); }
+function roleRank(role) { const text = String(role || '').toLowerCase(); if (/grabungsleit|projektleit|professor/.test(text)) return 0; if (/technische leit|technical/.test(text)) return 1; if (/assist/.test(text)) return 2; if (/schnitt|trench/.test(text)) return 3; if (/doku|dokument/.test(text)) return 4; if (/logistik|infra/.test(text)) return 5; if (/teilnehm|student|participant/.test(text)) return 6; return 9; }
+function statusRank(status) { return ({ gesetzt: 0, zugesagt: 1, erweiterbar: 2, zu_klaeren: 3, unklar: 4, anzufragen: 5 })[normalizeStatus(status)] ?? 99; }
+function prettyStatus(status) { return ({ gesetzt: 'gesetzt', zugesagt: 'zugesagt', erweiterbar: 'erweiterbar', unklar: 'unklar', zu_klaeren: 'zu klären', anzufragen: 'anzufragen' })[normalizeStatus(status)] || status || '-'; }
+function statusClass(status) { const normalized = normalizeStatus(status); return normalized === 'zu_klaeren' ? 'status-zu-klaeren' : `status-${normalized || 'unknown'}`; }
+function barColor(status) { const normalized = normalizeStatus(status); if (normalized === 'gesetzt') return 'green'; if (normalized === 'zugesagt' || normalized === 'erweiterbar') return 'blue'; if (normalized === 'zu_klaeren' || normalized === 'unklar') return 'orange'; return 'gray'; }
+function hasProblem(person) { return ['zu_klaeren', 'unklar', 'anzufragen'].includes(normalizeStatus(person.status)) || /unklar|offen|klaer|klär|uneinheitlich|angefragt/i.test(noteText(person)); }
+function noteText(person) { const privateData = person.private || {}; return [person.availability_note, person.source_note, privateData.internal_note].filter(Boolean).join(' '); }
+function formatSlotSummary(person) { const slots = slotsFor(person).filter(slot => slot.availability_from || slot.availability_to); return slots.length ? slots.map(slot => `${formatDate(slot.availability_from)} - ${formatDate(slot.availability_to)}`).join(' · ') : 'offen'; }
 function formatAbsence(absence) { const reason = absence.reason_type === 'krank' ? 'Krank' : (absence.reason_note || 'Anderer Grund'); return `${formatDate(absence.absence_from)} - ${formatDate(absence.absence_to)}: ${reason}`; }
 function parseDate(value) { if (!value) return null; const date = new Date(String(value).slice(0, 10) + 'T00:00:00'); return Number.isNaN(date.getTime()) ? null : date; }
-function compareDate(a, b) { if (!a && !b) return 0; if (!a) return 1; if (!b) return -1; return new Date(a) - new Date(b); }
+function compareDates(a, b) { if (!a && !b) return 0; if (!a) return 1; if (!b) return -1; return new Date(a) - new Date(b); }
 function formatDate(value) { const date = parseDate(value); return date ? date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'offen'; }
 function formatDateTime(value) { const date = value ? new Date(value) : new Date(); return date.toLocaleString('de-DE', { dateStyle: 'medium', timeStyle: 'short' }); }
 function clamp(value, min, max) { return Math.min(max, Math.max(min, value)); }
+function shorten(value, maxLength) { const text = String(value || '').trim(); return text.length > maxLength ? `${text.slice(0, maxLength - 1)}...` : text; }
 function escapeHtml(value) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install); else install();
