@@ -1,6 +1,11 @@
 import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
 const MANAGER_ROLES = ['admin', 'professor', 'technical_lead', 'assistant'];
+const ROLE_OPTIONS = [
+  'Technische Grabungsleitung',
+  'Assistenz technische Grabungsleitung',
+  'Teilnehmende'
+];
 
 function getClient() {
   const config = window.APP_CONFIG || {};
@@ -16,6 +21,69 @@ function injectStyles() {
   style.textContent = `
     #participantPlanningTabs.personaleinsatz-tabs-hidden {
       display: none !important;
+    }
+    .personnel-role-select {
+      width: 100%;
+    }
+    .personnel-role-cleanup-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: none;
+      background: rgba(9, 24, 39, 0.28);
+    }
+    .personnel-role-cleanup-backdrop.open {
+      display: block;
+    }
+    .personnel-role-cleanup-panel {
+      position: fixed;
+      right: 24px;
+      top: 96px;
+      z-index: 9999;
+      display: none;
+      width: min(360px, calc(100vw - 32px));
+      padding: 18px;
+      border: 1px solid #cfddea;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 18px 46px rgba(10, 35, 57, 0.22);
+    }
+    .personnel-role-cleanup-panel.open {
+      display: block;
+    }
+    .personnel-role-cleanup-panel h3 {
+      margin: 0 0 4px;
+      color: #08243d;
+      font-size: 18px;
+    }
+    .personnel-role-cleanup-panel p {
+      margin: 0 0 14px;
+      color: #5a6e82;
+    }
+    .personnel-role-cleanup-options {
+      display: grid;
+      gap: 8px;
+    }
+    .personnel-role-cleanup-choice {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid #cfddea;
+      border-radius: 8px;
+      background: #f8fbfe;
+      color: #08243d;
+      font-weight: 700;
+      text-align: left;
+      cursor: pointer;
+    }
+    .personnel-role-cleanup-choice:hover,
+    .personnel-role-cleanup-choice.active {
+      border-color: #2b7de1;
+      background: #eaf3ff;
+    }
+    .personnel-role-cleanup-footer {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 14px;
     }
   `;
   document.head.appendChild(style);
@@ -41,6 +109,10 @@ function preferDeploymentView() {
   const deployment = document.getElementById('personnelDeploymentView');
   deployment?.classList.remove('hidden');
   deployment?.removeAttribute('aria-hidden');
+
+  enhancePersonDrawerRoleSelect();
+  ensureRoleEditControls();
+  sortDeploymentRowsByRoleStart();
 }
 
 async function getSession(client) {
@@ -112,7 +184,7 @@ async function handlePersonSubmit(event) {
     const special = String(form.get('special_function') || '').trim();
     const participant = {
       full_name: String(form.get('full_name') || '').trim(),
-      public_role: String(form.get('public_role') || '').trim() || 'Teilnehmende',
+      public_role: normalizeRole(String(form.get('public_role') || '').trim() || 'Teilnehmende'),
       status: String(form.get('status') || 'zugesagt'),
       availability_from: String(form.get('availability_from') || '').trim() || null,
       availability_to: String(form.get('availability_to') || '').trim() || null,
@@ -162,11 +234,202 @@ async function handlePersonSubmit(event) {
   }
 }
 
+function enhancePersonDrawerRoleSelect() {
+  const form = document.getElementById('v21PersonForm');
+  const field = form?.querySelector('[name="public_role"]');
+  if (!form || !field || field.tagName === 'SELECT') return;
+
+  const currentRole = normalizeRole(field.value || 'Teilnehmende');
+  const select = document.createElement('select');
+  select.name = 'public_role';
+  select.className = `${field.className || 'personnel-field'} personnel-role-select`.trim();
+  select.required = true;
+  select.innerHTML = ROLE_OPTIONS.map(role => (
+    `<option value="${escapeHtml(role)}" ${role === currentRole ? 'selected' : ''}>${escapeHtml(role)}</option>`
+  )).join('');
+  field.replaceWith(select);
+}
+
+function ensureRoleEditControls() {
+  if (!isDeploymentVisible()) return;
+  document.querySelectorAll('#personnelDeploymentView .personnel-row').forEach(row => {
+    if (row.querySelector('.personnel-role-edit-btn')) return;
+    const id = row.querySelector('.personnel-date-edit-btn')?.dataset?.id;
+    const roleNode = row.querySelector('.personnel-role');
+    if (!id || !roleNode) return;
+    const button = document.createElement('button');
+    button.className = 'personnel-role personnel-role-edit-btn';
+    button.type = 'button';
+    button.dataset.id = id;
+    button.textContent = normalizeRole(roleNode.textContent || 'Teilnehmende');
+    roleNode.replaceWith(button);
+  });
+}
+
+function handleRoleEditClick(event) {
+  const button = event.target?.closest?.('#personnelDeploymentView .personnel-role-edit-btn');
+  if (!button) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const row = button.closest('.personnel-row');
+  const name = row?.querySelector('.personnel-person-top strong')?.textContent?.trim() || 'Person';
+  openRolePanel(button.dataset.id, name, button.textContent);
+}
+
+function openRolePanel(participantId, name, currentRole) {
+  if (!participantId) return;
+  const panel = ensureRolePanel();
+  panel.dataset.participantId = participantId;
+  panel.querySelector('[data-role-name]').textContent = name;
+  panel.querySelector('[data-role-options]').innerHTML = ROLE_OPTIONS.map(role => (
+    `<button class="personnel-role-cleanup-choice ${role === normalizeRole(currentRole) ? 'active' : ''}" type="button" data-role="${escapeHtml(role)}">${escapeHtml(role)}</button>`
+  )).join('');
+  document.getElementById('personnelRoleCleanupBackdrop')?.classList.add('open');
+  panel.classList.add('open');
+}
+
+function ensureRolePanel() {
+  let panel = document.getElementById('personnelRoleCleanupPanel');
+  if (panel) return panel;
+  document.body.insertAdjacentHTML('beforeend', `
+    <div id="personnelRoleCleanupBackdrop" class="personnel-role-cleanup-backdrop"></div>
+    <aside id="personnelRoleCleanupPanel" class="personnel-role-cleanup-panel" aria-label="Rolle bearbeiten">
+      <h3>Rolle bearbeiten</h3>
+      <p><strong data-role-name></strong></p>
+      <div class="personnel-role-cleanup-options" data-role-options></div>
+      <p id="personnelRoleCleanupError" class="personnel-form-error" role="alert"></p>
+      <div class="personnel-role-cleanup-footer">
+        <button class="btn small ghost" type="button" data-role-close>Schliessen</button>
+      </div>
+    </aside>
+  `);
+  panel = document.getElementById('personnelRoleCleanupPanel');
+  document.getElementById('personnelRoleCleanupBackdrop')?.addEventListener('click', closeRolePanel);
+  panel.querySelector('[data-role-close]')?.addEventListener('click', closeRolePanel);
+  panel.addEventListener('click', event => {
+    const choice = event.target?.closest?.('.personnel-role-cleanup-choice');
+    if (choice) saveRoleChoice(panel.dataset.participantId, choice.dataset.role);
+  });
+  return panel;
+}
+
+function closeRolePanel() {
+  document.getElementById('personnelRoleCleanupBackdrop')?.classList.remove('open');
+  const panel = document.getElementById('personnelRoleCleanupPanel');
+  panel?.classList.remove('open');
+  if (panel) panel.dataset.participantId = '';
+}
+
+async function saveRoleChoice(participantId, role) {
+  const panel = document.getElementById('personnelRoleCleanupPanel');
+  const errorNode = document.getElementById('personnelRoleCleanupError');
+  if (errorNode) errorNode.textContent = '';
+  try {
+    const client = getClient();
+    const { isManager } = await ensureManager(client);
+    if (!isManager) throw new Error('Keine Berechtigung zum Bearbeiten.');
+    const normalizedRole = normalizeRole(role);
+    const { error } = await client.from('participants').update({ public_role: normalizedRole }).eq('id', participantId);
+    if (error) throw error;
+    closeRolePanel();
+    document.getElementById('refreshButton')?.click();
+    window.setTimeout(preferDeploymentView, 500);
+    window.setTimeout(preferDeploymentView, 1200);
+  } catch (error) {
+    console.error('Rolle konnte nicht gespeichert werden', error);
+    if (errorNode) errorNode.textContent = `Speichern fehlgeschlagen: ${error?.message || error}`;
+    panel?.classList.add('open');
+  }
+}
+
+function sortDeploymentRowsByRoleStart() {
+  if (!isDeploymentVisible()) return;
+  const sortSelect = document.getElementById('personnelSortBy');
+  if (sortSelect && sortSelect.value !== 'role') return;
+  const container = document.querySelector('#personnelDeploymentView .personnel-rows');
+  if (!container) return;
+  const rows = [...container.querySelectorAll('.personnel-row')];
+  rows
+    .sort((a, b) => compareRowRolePriority(a, b) || compareRowStart(a, b) || compareRowName(a, b))
+    .forEach(row => container.appendChild(row));
+}
+
+function compareRowRolePriority(a, b) {
+  const nameA = getRowName(a);
+  const nameB = getRowName(b);
+  return getRoleRank(getRowRole(a), nameA) - getRoleRank(getRowRole(b), nameB);
+}
+
+function compareRowStart(a, b) {
+  return getRowStartTime(a) - getRowStartTime(b);
+}
+
+function compareRowName(a, b) {
+  return getRowName(a).localeCompare(getRowName(b), 'de');
+}
+
+function getRowName(row) {
+  return row.querySelector('.personnel-person-top strong')?.textContent?.trim() || '';
+}
+
+function getRowRole(row) {
+  return row.querySelector('.personnel-role')?.textContent?.trim() || 'Teilnehmende';
+}
+
+function getRowStartTime(row) {
+  const text = row.textContent || '';
+  const match = text.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+  if (!match) return Number.MAX_SAFE_INTEGER;
+  return new Date(`${match[3]}-${match[2]}-${match[1]}T00:00:00`).getTime();
+}
+
+function getRoleRank(role, name = '') {
+  if (normalizeComparable(name) === 'andreas zauner') return 0;
+  const normalized = normalizeRole(role);
+  if (normalized === 'Technische Grabungsleitung') return 1;
+  if (normalized === 'Assistenz technische Grabungsleitung') return 2;
+  if (normalized === 'Teilnehmende') return 3;
+  return 9;
+}
+
+function normalizeRole(role) {
+  const raw = String(role || '').trim();
+  const comparable = normalizeComparable(raw);
+  if (!raw) return 'Teilnehmende';
+  if (comparable === 'technische grabungsleitung') return 'Technische Grabungsleitung';
+  if (comparable === 'assistenz technische grabungsleitung' || comparable === 'assistenz') return 'Assistenz technische Grabungsleitung';
+  if (['teilnehmer', 'teilnehmerin', 'teilnehmender', 'teilnehmende'].includes(comparable)) return 'Teilnehmende';
+  return ROLE_OPTIONS.includes(raw) ? raw : 'Teilnehmende';
+}
+
+function normalizeComparable(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+}
+
+function isDeploymentVisible() {
+  const deployment = document.getElementById('personnelDeploymentView');
+  return Boolean(deployment && !deployment.classList.contains('hidden'));
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function install() {
   if (window.__personaleinsatzCleanupInstalled) return;
   window.__personaleinsatzCleanupInstalled = true;
   injectStyles();
   document.addEventListener('submit', handlePersonSubmit, true);
+  document.addEventListener('click', handleRoleEditClick, true);
   window.setInterval(preferDeploymentView, 800);
   window.setTimeout(preferDeploymentView, 50);
   window.setTimeout(preferDeploymentView, 600);
