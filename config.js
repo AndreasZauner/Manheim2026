@@ -11,9 +11,21 @@ window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient
       window.APP_CONFIG.SUPABASE_ANON_KEY,
       { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
     );
+    hardenManheimSupabaseClient(window.__manheimSupabaseClient);
   }
   return window.__manheimSupabaseClient;
 };
+
+function hardenManheimSupabaseClient(client) {
+  if (!client?.auth || client.__manheimAuthHardened) return;
+  client.__manheimAuthHardened = true;
+  const originalOnAuthStateChange = client.auth.onAuthStateChange?.bind(client.auth);
+  if (typeof originalOnAuthStateChange === 'function') {
+    client.auth.onAuthStateChange = callback => originalOnAuthStateChange((event, session) => {
+      window.setTimeout(() => callback(event, session), 0);
+    });
+  }
+}
 
 window.getManheimAuthSession = function getManheimAuthSession(client) {
   const run = async () => {
