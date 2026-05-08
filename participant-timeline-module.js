@@ -7,6 +7,8 @@ if (document.readyState === 'loading') {
 async function installParticipantBootstrap() {
   if (window.__participantBootstrapInstalled) return;
   window.__participantBootstrapInstalled = true;
+  import('./auth-login-stabilizer.js?v=login-stabil-20260508-1')
+    .catch(error => console.error('Login-Stabilisierung konnte nicht geladen werden', error));
   window.setTimeout(async () => {
     const imports = [];
     if (!window.__participantPlanningInstalled) {
