@@ -22,6 +22,14 @@ function watchLoginCompletion() {
       return;
     }
     if (/angemeldet/i.test(message)) {
+      if (Date.now() - startedAt > LOGIN_WATCH_MS) {
+        window.clearInterval(timer);
+        const box = getAuthMessage();
+        if (box) {
+          box.textContent = 'Angemeldet, aber die App hat nicht fertig geladen. Bitte Seite neu laden und erneut versuchen.';
+        }
+        return;
+      }
       const box = getAuthMessage();
       if (box) box.textContent = 'Angemeldet. Lade App ...';
       return;
