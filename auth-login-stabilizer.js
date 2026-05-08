@@ -22,8 +22,8 @@ function watchLoginCompletion() {
       return;
     }
     if (/angemeldet/i.test(message)) {
-      window.clearInterval(timer);
-      window.setTimeout(() => window.location.reload(), 250);
+      const box = getAuthMessage();
+      if (box) box.textContent = 'Angemeldet. Lade App ...';
       return;
     }
     if (Date.now() - startedAt > LOGIN_WATCH_MS) {
