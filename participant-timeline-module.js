@@ -9,6 +9,8 @@ async function installParticipantBootstrap() {
   window.__participantBootstrapInstalled = true;
   import('./auth-login-stabilizer.js?v=login-stabil-20260508-1')
     .catch(error => console.error('Login-Stabilisierung konnte nicht geladen werden', error));
+  import('./personaleinsatz-cleanup-fix.js?v=personaleinsatz-cleanup-20260508-1')
+    .catch(error => console.error('Personaleinsatz-Stabilisierung konnte nicht geladen werden', error));
   window.setTimeout(async () => {
     const imports = [];
     if (!window.__participantPlanningInstalled) {
