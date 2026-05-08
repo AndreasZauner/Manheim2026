@@ -57,7 +57,8 @@ const state = {
   profiles: [],
   loadErrors: [],
   activeTab: 'dashboard',
-  calendarOffset: 0
+  calendarOffset: 0,
+  bootstrapPromise: null
 };
 
 const els = {};
@@ -74,11 +75,11 @@ async function init() {
     return;
   }
 
-  state.supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  state.supabase = window.getManheimSupabaseClient?.(createClient) || createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
 
-  const { data: { session } } = await state.supabase.auth.getSession();
+  const { data: { session } } = await getAuthSession();
   state.session = session;
 
   state.supabase.auth.onAuthStateChange(async (_event, sessionNow) => {
@@ -166,12 +167,18 @@ async function onLogin(event) {
   event.preventDefault();
   const form = new FormData(event.currentTarget);
   setAuthMessage('Anmeldung läuft …');
-  const { error } = await state.supabase.auth.signInWithPassword({
-    email: form.get('email'),
-    password: form.get('password')
-  });
-  if (error) return setAuthMessage(error.message, true);
-  setAuthMessage('Angemeldet.');
+  try {
+    const { data, error } = await state.supabase.auth.signInWithPassword({
+      email: form.get('email'),
+      password: form.get('password')
+    });
+    if (error) return setAuthMessage(error.message, true);
+    state.session = data?.session || state.session;
+    setAuthMessage('Angemeldet. Lade App …');
+    if (state.session) await bootstrapApp();
+  } catch (error) {
+    setAuthMessage(error?.message || String(error), true);
+  }
 }
 async function onSignup(event) {
   event.preventDefault();
@@ -212,6 +219,16 @@ async function signOut() {
 }
 
 async function bootstrapApp() {
+  if (state.bootstrapPromise) return state.bootstrapPromise;
+  state.bootstrapPromise = runBootstrapApp();
+  try {
+    return await state.bootstrapPromise;
+  } finally {
+    state.bootstrapPromise = null;
+  }
+}
+
+async function runBootstrapApp() {
   if (!state.session) return showAuth();
   try {
     if (els.setupBanner) els.setupBanner.classList.add('hidden');
@@ -704,6 +721,9 @@ function setTab(tab) {
 function canManageProject() { return ['admin','professor','technical_lead','assistant'].includes(state.profile?.role); }
 function canAdmin() { return state.profile?.role === 'admin'; }
 function setSyncState(text) { els.syncState.textContent = text; }
+function getAuthSession() {
+  return window.getManheimAuthSession?.(state.supabase) || state.supabase.auth.getSession();
+}
 function formatSetupError(message, error) {
   return '<strong>Setup-Hinweis:</strong> ' + escapeHtml(message) + '<br><small>' + escapeHtml(error?.message || String(error || 'Unbekannter Fehler')) + '</small>';
 }
