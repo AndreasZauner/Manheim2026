@@ -43,7 +43,7 @@ create or replace function public.get_personal_share_snapshot(p_password text)
 returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, extensions
 as $$
 declare
   password_valid boolean;
