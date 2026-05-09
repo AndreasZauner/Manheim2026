@@ -28,6 +28,18 @@
       display: none !important;
     }
   </style>
+  <script>
+    (function installLateDomReadyGuard() {
+      const originalAddEventListener = document.addEventListener.bind(document);
+      document.addEventListener = function guardedAddEventListener(type, listener, options) {
+        if (type === 'DOMContentLoaded' && document.readyState !== 'loading' && typeof listener === 'function') {
+          window.setTimeout(() => listener.call(document, new Event('DOMContentLoaded')), 0);
+          return undefined;
+        }
+        return originalAddEventListener(type, listener, options);
+      };
+    })();
+  </script>
 </head>
 <body>
   <div id="setupBanner" class="setup-banner hidden"></div>
