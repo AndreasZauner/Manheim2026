@@ -4,6 +4,17 @@ body {
   overflow: hidden;
 }
 
+html:has(body.personal-share-mode),
+body.personal-share-mode {
+  height: auto;
+  min-height: 100%;
+  overflow: auto;
+}
+
+body.personal-share-mode .personal-share-root {
+  overflow: visible;
+}
+
 .app-shell {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
