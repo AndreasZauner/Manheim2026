@@ -84,3 +84,4 @@ async function loadAppModules() {
   );
   await Promise.allSettled(imports);
 }
+
