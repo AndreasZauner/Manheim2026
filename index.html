@@ -7,7 +7,7 @@
   <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./styles-fix.css?v=sidebar-collapse-20260506-1" />
-  <script src="./config.js?v=leitstand-responsive-20260506-1"></script>
+  <script src="./config.js?v=calendar-nav-fix-20260511-1"></script>
   <script>
     (function markPersonalShareRoute() {
       const params = new URLSearchParams(window.location.search);
@@ -95,13 +95,13 @@
       </div>
       <nav class="nav">
         <button class="nav-btn active" data-tab="dashboard">Leitstand</button>
+        <button class="nav-btn" data-tab="calendar">Kalender</button>
         <button class="nav-extra-btn" id="openPointsNavButton" type="button">Offene Punkte</button>
         <button class="nav-btn" data-tab="participants">Personal</button>
         <button class="nav-btn" data-tab="mindmap">Feld &amp; Doku</button>
         <button class="nav-btn" data-tab="tasks">Infrastruktur</button>
         <button class="nav-btn" data-tab="ideas">Finanzen</button>
         <button class="nav-btn" data-tab="admin" id="adminTabButton">Verwaltung</button>
-        <button class="nav-btn" data-tab="calendar">Kalender</button>
         <button class="nav-btn hidden" data-tab="help">Hilfe &amp; Setup</button>
       </nav>
       <div class="sidebar-meta">
@@ -308,7 +308,7 @@
       importManheimModule('./app.js', 'Haupt-App');
       importManheimModule('./open-points-module.js?v=open-points-20260503-1', 'Arbeitsliste');
       importManheimModule('./map-module.js?v=ui-polish-20260503-1', 'Kartenmodul');
-      importManheimModule('./phase3-field-doku-module.js?v=ui-polish-20260503-1', 'Feld-und-Doku-Modul');
+      importManheimModule('./phase3-field-doku-module.js?v=calendar-nav-fix-20260511-1', 'Feld-und-Doku-Modul');
       importManheimModule('./participant-status-editor-module.js?v=status-20260505-1', 'Status-Editor');
     }
   </script>
