@@ -58,13 +58,38 @@ const state = {
   loadErrors: [],
   activeTab: 'dashboard',
   calendarOffset: 0,
-  bootstrapPromise: null
+  bootstrapPromise: null,
+  authEventPromise: Promise.resolve(),
+  initStarted: false
 };
 
 const els = {};
-document.addEventListener('DOMContentLoaded', init);
+if (!isPersonalShareRoute()) {
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startAppInit);
+  else startAppInit();
+}
+
+function isPersonalShareRoute() {
+  const params = new URLSearchParams(window.location.search);
+  return window.__manheimShareRoute === 'personal' || params.get('share') === 'personal' || params.has('personalstand');
+}
+
+function startAppInit() {
+  init().catch(error => {
+    console.error('App-Start fehlgeschlagen', error);
+    const setup = document.getElementById('setupBanner');
+    const authMessage = document.getElementById('authMessage');
+    if (setup) {
+      setup.classList.remove('hidden');
+      setup.textContent = `Setup-Hinweis: Die App konnte nicht starten. ${error?.message || error}`;
+    }
+    if (authMessage) authMessage.textContent = 'App-Start fehlgeschlagen. Bitte Seite neu laden.';
+  });
+}
 
 async function init() {
+  if (state.initStarted) return;
+  state.initStarted = true;
   cacheEls();
   bindStaticUi();
   fillSelects();
@@ -79,17 +104,40 @@ async function init() {
     auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
   });
 
-  const { data: { session } } = await getAuthSession();
-  state.session = session;
+  try {
+    const { data: { session } } = await withTimeout(getAuthSession(), 'Session laden', 20000);
+    state.session = session;
+  } catch (error) {
+    console.error('Initiale Session konnte nicht geladen werden', error);
+    state.session = null;
+    setAuthMessage('Session konnte nicht geladen werden. Bitte Seite neu laden oder erneut anmelden.', true);
+  }
 
-  state.supabase.auth.onAuthStateChange(async (_event, sessionNow) => {
-    state.session = sessionNow;
-    if (sessionNow) await bootstrapApp();
-    else showAuth();
-  });
+  state.supabase.auth.onAuthStateChange((event, sessionNow) => queueAuthEvent(event, sessionNow));
 
   if (state.session) await bootstrapApp();
   else showAuth();
+}
+
+function queueAuthEvent(event, sessionNow) {
+  state.authEventPromise = state.authEventPromise
+    .catch(error => console.warn('Vorheriges Auth-Ereignis ist fehlgeschlagen', error))
+    .then(() => handleAuthEvent(event, sessionNow));
+  return state.authEventPromise;
+}
+
+async function handleAuthEvent(event, sessionNow) {
+  if (isPersonalShareRoute()) return;
+  if (event === 'SIGNED_OUT') {
+    state.session = null;
+    return showAuth();
+  }
+  if (sessionNow) {
+    state.session = sessionNow;
+    await bootstrapApp();
+    return;
+  }
+  if (!state.session) showAuth();
 }
 
 function cacheEls() {
@@ -165,19 +213,28 @@ function showApp() {
 
 async function onLogin(event) {
   event.preventDefault();
+  const submitButton = event.currentTarget.querySelector('button[type="submit"]');
   const form = new FormData(event.currentTarget);
   setAuthMessage('Anmeldung läuft …');
+  if (submitButton) submitButton.disabled = true;
   try {
-    const { data, error } = await state.supabase.auth.signInWithPassword({
+    const { data, error } = await withTimeout(state.supabase.auth.signInWithPassword({
       email: form.get('email'),
       password: form.get('password')
-    });
+    }), 'Anmeldung', 30000);
     if (error) return setAuthMessage(error.message, true);
     state.session = data?.session || state.session;
+    if (!state.session) {
+      const { data: sessionData } = await withTimeout(getAuthSession(), 'Session nach Anmeldung laden', 15000);
+      state.session = sessionData?.session || null;
+    }
+    if (!state.session) return setAuthMessage('Anmeldung erfolgreich, aber die Session wurde nicht gespeichert. Bitte Seite neu laden und erneut anmelden.', true);
     setAuthMessage('Angemeldet. Lade App …');
-    if (state.session) await bootstrapApp();
+    await bootstrapApp();
   } catch (error) {
     setAuthMessage(error?.message || String(error), true);
+  } finally {
+    if (submitButton) submitButton.disabled = false;
   }
 }
 async function onSignup(event) {
@@ -214,7 +271,8 @@ function setAuthMessage(message, isError = false) {
 
 async function signOut() {
   if (!state.supabase) return;
-  await state.supabase.auth.signOut();
+  await withTimeout(state.supabase.auth.signOut(), 'Abmeldung', 15000);
+  state.session = null;
   showAuth();
 }
 
@@ -721,6 +779,16 @@ function setTab(tab) {
 function canManageProject() { return ['admin','professor','technical_lead','assistant'].includes(state.profile?.role); }
 function canAdmin() { return state.profile?.role === 'admin'; }
 function setSyncState(text) { els.syncState.textContent = text; }
+function withTimeout(promise, label, ms = 20000) {
+  let timeoutId;
+  const timeout = new Promise((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(`${label} dauert zu lange. Bitte Seite neu laden und erneut versuchen.`)), ms);
+  });
+  return Promise.race([
+    Promise.resolve(promise).finally(() => window.clearTimeout(timeoutId)),
+    timeout
+  ]);
+}
 function getAuthSession() {
   return window.getManheimAuthSession?.(state.supabase) || state.supabase.auth.getSession();
 }
@@ -758,3 +826,4 @@ function colorForCategory(category) {
 function escapeHtml(value) {
   return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;');
 }
+

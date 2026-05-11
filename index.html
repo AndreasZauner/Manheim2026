@@ -262,15 +262,24 @@
     </main>
   </div>
   <script type="module">
+    const importManheimModule = (path, label) => import(path).catch(error => {
+      console.error(`${label} konnte nicht geladen werden`, error);
+      const setup = document.getElementById('setupBanner');
+      if (setup) {
+        setup.classList.remove('hidden');
+        setup.textContent = `Setup-Hinweis: ${label} konnte nicht geladen werden. ${error?.message || error}`;
+      }
+    });
     if (window.__manheimShareRoute === 'personal') {
-      import('./personal-share-view.js?v=personal-share-direct-20260509-1');
+      importManheimModule('./personal-share-view.js?v=personal-share-direct-20260509-1', 'Personal-Share-Ansicht');
     } else {
-      import('./app.js');
-      import('./open-points-module.js?v=open-points-20260503-1');
-      import('./map-module.js?v=ui-polish-20260503-1');
-      import('./phase3-field-doku-module.js?v=ui-polish-20260503-1');
-      import('./participant-status-editor-module.js?v=status-20260505-1');
+      importManheimModule('./app.js', 'Haupt-App');
+      importManheimModule('./open-points-module.js?v=open-points-20260503-1', 'Arbeitsliste');
+      importManheimModule('./map-module.js?v=ui-polish-20260503-1', 'Kartenmodul');
+      importManheimModule('./phase3-field-doku-module.js?v=ui-polish-20260503-1', 'Feld-und-Doku-Modul');
+      importManheimModule('./participant-status-editor-module.js?v=status-20260505-1', 'Status-Editor');
     }
   </script>
 </body>
 </html>
+
