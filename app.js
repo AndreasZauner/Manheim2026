@@ -58,6 +58,7 @@ const state = {
   loadErrors: [],
   activeTab: 'dashboard',
   calendarOffset: 0,
+  calendarView: 'month',
   bootstrapPromise: null,
   authEventPromise: Promise.resolve(),
   initStarted: false
@@ -145,7 +146,7 @@ function cacheEls() {
     'setupBanner','authScreen','pendingScreen','app','authMessage','loginForm','signupForm','magicForm',
     'sidebarUserName','sidebarUserRole','pageTitle','pageSubtitle','syncState','kpiGrid','upcomingList','cockpitGrid','roleCards','staffAlerts',
     'mindmapGrid','taskCategoryFilter','taskStatusFilter','taskForm','taskFormCategory','taskSuggestionBox','taskList',
-    'calendarGrid','calendarLabel','participantsBody','participantsHead','participantsSummary','participantForm','participantFormPanel',
+    'calendarGrid','calendarLabel','calendarViewMode','todayCalendar','participantsBody','participantsHead','participantsSummary','participantForm','participantFormPanel',
     'ideaForm','ideaFormCategory','ideaSuggestionBox','ideaList','profilesBody','adminInfoList','seedButton','refreshButton','exportButton','adminTabButton'
   ].forEach(id => els[id] = document.getElementById(id));
 }
@@ -158,6 +159,14 @@ function bindStaticUi() {
   document.getElementById('pendingRefresh').addEventListener('click', bootstrapApp);
   document.getElementById('prevMonth').addEventListener('click', () => { state.calendarOffset--; renderCalendar(); });
   document.getElementById('nextMonth').addEventListener('click', () => { state.calendarOffset++; renderCalendar(); });
+  els.todayCalendar?.addEventListener('click', () => { state.calendarOffset = 0; renderCalendar(); });
+  els.calendarViewMode?.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-calendar-view]');
+    if (!button) return;
+    state.calendarView = button.dataset.calendarView;
+    state.calendarOffset = 0;
+    renderCalendar();
+  });
 
   els.loginForm.addEventListener('submit', onLogin);
   els.signupForm.addEventListener('submit', onSignup);
@@ -522,36 +531,180 @@ async function updateTaskStatus(id, status) {
 }
 
 function renderCalendar() {
+  if (!els.calendarGrid) return;
+  document.querySelectorAll('[data-calendar-view]').forEach((button) => {
+    button.classList.toggle('active', button.dataset.calendarView === state.calendarView);
+  });
+  if (state.calendarView === 'day') return renderCalendarDay();
+  if (state.calendarView === 'week') return renderCalendarWeek();
+  return renderCalendarMonth();
+}
+
+function renderCalendarMonth() {
   const base = new Date();
   const monthDate = new Date(base.getFullYear(), base.getMonth() + state.calendarOffset, 1);
   const year = monthDate.getFullYear();
   const month = monthDate.getMonth();
-  els.calendarLabel.textContent = monthDate.toLocaleDateString('de-DE', { month:'long', year:'numeric' });
+  els.calendarLabel.textContent = monthDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+  els.calendarGrid.className = 'calendar-grid calendar-month-grid';
 
   const start = new Date(year, month, 1);
   const end = new Date(year, month + 1, 0);
   const firstDay = (start.getDay() + 6) % 7;
   const daysInMonth = end.getDate();
   const previousEnd = new Date(year, month, 0).getDate();
-
-  const names = ['Mo','Di','Mi','Do','Fr','Sa','So'].map(n => `<div class="dayname">${n}</div>`).join('');
+  const names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(n => `<div class="dayname">${n}</div>`).join('');
   const cells = [];
-  for (let i=0; i<firstDay; i++) {
+
+  for (let i = 0; i < firstDay; i++) {
     const dayNum = previousEnd - firstDay + i + 1;
     cells.push(`<div class="day mutedday"><div class="num">${dayNum}</div></div>`);
   }
-  for (let day=1; day<=daysInMonth; day++) {
-    const iso = toIsoDate(new Date(year, month, day));
-    const dayTasks = state.tasks.filter(t => t.due_date === iso).slice(0,4);
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(year, month, day);
+    const iso = toIsoDate(date);
+    const dayTasks = calendarTasksForDate(iso);
     cells.push(`<div class="day ${toIsoDate(new Date()) === iso ? 'today' : ''}">
       <div class="num">${day}</div>
-      ${dayTasks.map(t => `<span class="cal-task" style="background:${colorForCategory(t.category)}">${escapeHtml(t.title)}</span>`).join('')}
+      <div class="calendar-day-stack">${dayTasks.slice(0, 4).map(calendarTaskPill).join('')}</div>
+      ${dayTasks.length > 4 ? `<span class="calendar-more">+${dayTasks.length - 4}</span>` : ''}
     </div>`);
   }
   const total = firstDay + daysInMonth;
   const trailing = (7 - (total % 7)) % 7;
-  for (let i=0; i<trailing; i++) cells.push(`<div class="day mutedday"></div>`);
+  for (let i = 0; i < trailing; i++) cells.push('<div class="day mutedday"></div>');
   els.calendarGrid.innerHTML = names + cells.join('');
+  bindCalendarTaskLinks();
+}
+
+function renderCalendarWeek() {
+  const start = startOfWeek(addDays(new Date(), state.calendarOffset * 7));
+  const days = Array.from({ length: 7 }, (_, index) => addDays(start, index));
+  const end = days[6];
+  els.calendarLabel.textContent = `${formatShortDate(toIsoDate(start))} – ${formatShortDate(toIsoDate(end))}`;
+  els.calendarGrid.className = 'calendar-grid calendar-week-grid';
+  els.calendarGrid.innerHTML = days.map((date) => {
+    const iso = toIsoDate(date);
+    const dayTasks = calendarTasksForDate(iso);
+    return `
+      <section class="calendar-week-day ${toIsoDate(new Date()) === iso ? 'today' : ''}">
+        <div class="calendar-week-head">
+          <strong>${date.toLocaleDateString('de-DE', { weekday: 'short' })}</strong>
+          <span>${formatShortDate(iso)}</span>
+        </div>
+        <div class="calendar-day-stack">${dayTasks.length ? dayTasks.map(calendarTaskCard).join('') : '<span class="calendar-empty">Keine Punkte</span>'}</div>
+      </section>
+    `;
+  }).join('');
+  bindCalendarTaskLinks();
+}
+
+function renderCalendarDay() {
+  const date = addDays(new Date(), state.calendarOffset);
+  const iso = toIsoDate(date);
+  const dayTasks = calendarTasksForDate(iso);
+  els.calendarLabel.textContent = date.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+  els.calendarGrid.className = 'calendar-grid calendar-day-view';
+  els.calendarGrid.innerHTML = `
+    <section class="calendar-day-panel">
+      <div class="calendar-day-panel-head">
+        <div>
+          <span class="muted">Tagesansicht</span>
+          <h3>${escapeHtml(els.calendarLabel.textContent)}</h3>
+        </div>
+        <span class="pill">${dayTasks.length} offene Punkte</span>
+      </div>
+      <div class="calendar-agenda-list">
+        ${dayTasks.length ? dayTasks.map(calendarTaskCard).join('') : '<div class="empty">Für diesen Tag sind keine Aufgaben terminiert.</div>'}
+      </div>
+    </section>
+  `;
+  bindCalendarTaskLinks();
+}
+
+function calendarTasksForDate(iso) {
+  return getCalendarTasks()
+    .filter((task) => iso >= task.start && iso <= task.end)
+    .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || String(a.title).localeCompare(String(b.title), 'de'));
+}
+
+function getCalendarTasks() {
+  return (state.tasks || [])
+    .filter((task) => !task.is_archived && task.status !== 'erledigt')
+    .map((task) => {
+      const range = taskCalendarRange(task);
+      return range ? { ...task, ...range } : null;
+    })
+    .filter(Boolean);
+}
+
+function taskCalendarRange(task) {
+  const metaRange = parseTaskRangeFromText(task.description);
+  const start = task.start_date || metaRange.start || task.due_date;
+  const end = task.end_date || metaRange.end || task.due_date || start;
+  if (!start && !end) return null;
+  const safeStart = start || end;
+  const safeEnd = end || start;
+  return safeStart <= safeEnd ? { start: safeStart, end: safeEnd } : { start: safeEnd, end: safeStart };
+}
+
+function parseTaskRangeFromText(value) {
+  const text = String(value || '');
+  const startMatch = text.match(/(?:Von|Start):\s*(\d{4}-\d{2}-\d{2})/i);
+  const endMatch = text.match(/(?:Bis|Ende):\s*(\d{4}-\d{2}-\d{2})/i);
+  const rangeMatch = text.match(/Zeitraum:\s*(\d{4}-\d{2}-\d{2})\s*(?:bis|-|–)\s*(\d{4}-\d{2}-\d{2})/i);
+  return {
+    start: rangeMatch?.[1] || startMatch?.[1] || '',
+    end: rangeMatch?.[2] || endMatch?.[1] || ''
+  };
+}
+
+function calendarTaskPill(task) {
+  return `<button class="cal-task priority-${escapeHtml(task.priority || 'mittel')}" type="button" data-task-id="${escapeHtml(task.id)}" data-task-title="${escapeAttribute(task.title)}" style="--cal-color:${colorForCategory(task.category)}">${escapeHtml(task.title)}</button>`;
+}
+
+function calendarTaskCard(task) {
+  const range = task.start === task.end ? formatShortDate(task.start) : `${formatShortDate(task.start)} – ${formatShortDate(task.end)}`;
+  return `
+    <button class="calendar-task-card priority-${escapeHtml(task.priority || 'mittel')}" type="button" data-task-id="${escapeHtml(task.id)}" data-task-title="${escapeAttribute(task.title)}" style="--cal-color:${colorForCategory(task.category)}">
+      <span class="calendar-task-title">${escapeHtml(task.title)}</span>
+      <span class="calendar-task-meta">${escapeHtml(range)} · ${escapeHtml(task.priority || 'mittel')} · ${escapeHtml(task.status || 'offen')}</span>
+      ${task.assigned_role ? `<span class="calendar-task-role">${escapeHtml(task.assigned_role)}</span>` : ''}
+    </button>
+  `;
+}
+
+function bindCalendarTaskLinks() {
+  document.querySelectorAll('.cal-task, .calendar-task-card').forEach((button) => {
+    button.addEventListener('click', () => openTaskInWorklist(button.dataset.taskTitle || ''));
+  });
+}
+
+function openTaskInWorklist(title) {
+  document.getElementById('openPointsNavButton')?.click();
+  const search = document.getElementById('openPointSearch');
+  if (search) {
+    search.value = title;
+    search.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+}
+
+function startOfWeek(date) {
+  const next = new Date(date);
+  const day = (next.getDay() + 6) % 7;
+  next.setDate(next.getDate() - day);
+  return new Date(next.getFullYear(), next.getMonth(), next.getDate());
+}
+
+function addDays(date, days) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function priorityRank(priority) {
+  const rank = { hoch: 0, mittel: 1, niedrig: 2 };
+  return rank[priority] ?? 3;
 }
 
 function renderParticipants() {
@@ -787,7 +940,7 @@ function setTab(tab) {
     dashboard:['Übersicht','Aktueller Projektstand, Ampel-Cockpit und nächste Aufgaben'],
     mindmap:['Projektkarte','Strukturierte Hauptäste mit laufend ergänzbaren Notizen'],
     tasks:['Aufgaben & Timeline','Operative To-dos, Fälligkeiten und Statuspflege'],
-    calendar:['Kalender','Monatsansicht der nächsten Arbeitspunkte'],
+    calendar:['Kalender','Tages-, Wochen- und Monatsansicht der terminierten Arbeitsliste'],
     participants:['Teilnehmende','Übersicht, Verfügbarkeiten und – je nach Rolle – Kontaktdaten'],
     ideas:['Ideen-Inbox','Neue Stichpunkte mit automatischer Zuordnung'],
     admin:['Admin','Rollen, Freischaltungen und Grunddaten'],
@@ -834,7 +987,18 @@ function formatDate(value) {
   if (Number.isNaN(d.getTime())) return '–';
   return d.toLocaleDateString('de-DE');
 }
-function toIsoDate(date) { return date.toISOString().slice(0,10); }
+function formatShortDate(value) {
+  if (!value) return '–';
+  const d = new Date(String(value).slice(0,10) + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return '–';
+  return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+}
+function toIsoDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 function summaryChip(text) { return `<span class="summary-chip">${text}</span>`; }
 function prettyStatus(status) {
   const map = { offen:'offen', laufend:'laufend', erledigt:'erledigt', blockiert:'blockiert', gesetzt:'gesetzt', zugesagt:'zugesagt', zu_klären:'zu klären', anzufragen:'anzufragen', aktiv:'aktiv' };
@@ -847,4 +1011,5 @@ function colorForCategory(category) {
 function escapeHtml(value) {
   return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;');
 }
+function escapeAttribute(value) { return escapeHtml(value); }
 
