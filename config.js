@@ -127,7 +127,7 @@ function wait(ms) {
     if (document.querySelector('script[src^="./participant-timeline-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './participant-timeline-module.js?v=leitstand-responsive-20260506-1';
+    script.src = './participant-timeline-module.js?v=calendar-nav-fix-20260511-1';
     document.head.appendChild(script);
   }
 
@@ -327,4 +327,5 @@ function wait(ms) {
   }
   function escapeHtml(value) { return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;'); }
 })();
+
 
