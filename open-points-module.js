@@ -58,6 +58,7 @@ function initOpenPointsModule() {
   els.areaFilter = document.getElementById('openPointAreaFilter');
   els.statusFilter = document.getElementById('openPointStatusFilter');
   els.sourceFilter = document.getElementById('openPointSourceFilter');
+  els.horizonFilter = document.getElementById('openPointHorizonFilter');
   els.summary = document.getElementById('openPointSummary');
   els.list = document.getElementById('openPointList');
   els.title = document.getElementById('pageTitle');
@@ -70,7 +71,7 @@ function initOpenPointsModule() {
     button.addEventListener('click', () => els.navButton.classList.remove('active'));
   });
 
-  [els.search, els.areaFilter, els.statusFilter, els.sourceFilter].forEach((control) => {
+  [els.search, els.areaFilter, els.statusFilter, els.sourceFilter, els.horizonFilter].forEach((control) => {
     control?.addEventListener('input', renderOpenPoints);
     control?.addEventListener('change', renderOpenPoints);
   });
@@ -197,6 +198,7 @@ function renderOpenPoints() {
   const areaFilter = els.areaFilter?.value || 'alle';
   const statusFilter = els.statusFilter?.value || 'alle';
   const sourceFilter = els.sourceFilter?.value || 'alle';
+  const horizonFilter = els.horizonFilter?.value || 'alle';
 
   const filtered = items.filter((item) => {
     const text = `${item.title} ${item.body} ${item.subcategory} ${item.areaLabel} ${item.source} ${item.workType || ''} ${item.horizon || ''}`.toLowerCase();
@@ -204,7 +206,8 @@ function renderOpenPoints() {
     const matchesArea = areaFilter === 'alle' || item.area === areaFilter;
     const matchesStatus = statusFilter === 'alle' || item.status === statusFilter;
     const matchesSource = sourceFilter === 'alle' || item.sourceKey === sourceFilter;
-    return matchesQuery && matchesArea && matchesStatus && matchesSource;
+    const matchesHorizon = horizonFilter === 'alle' || item.horizonKey === horizonFilter;
+    return matchesQuery && matchesArea && matchesStatus && matchesSource && matchesHorizon;
   });
 
   if (els.summary) {
@@ -227,6 +230,9 @@ function renderOpenPoints() {
   document.querySelectorAll('.openpoint-archive-btn').forEach((button) => {
     button.addEventListener('click', onArchiveOpenPoint);
   });
+  document.querySelectorAll('.openpoint-edit-control').forEach((control) => {
+    control.addEventListener('change', onOpenPointQuickEdit);
+  });
 }
 
 function getOpenPointItems() {
@@ -245,13 +251,17 @@ function getOpenPointItems() {
       status: note.status || 'offen',
       area,
       areaLabel: AREA_META[area]?.label || 'Leitstand',
+      priority: '',
+      dueDate: '',
+      assignedRole: '',
+      horizonKey: '',
       createdAt: note.created_at || ''
     };
   });
 
   const tasks = state.tasks.map((task) => {
     const area = areaForCategory(task.category);
-    const due = task.due_date ? `Faellig: ${formatDate(task.due_date)}` : '';
+    const due = task.due_date ? `Fällig: ${formatDate(task.due_date)}` : '';
     const meta = parseTaskMeta(task.description);
     return {
       id: `task-${task.id}`,
@@ -268,6 +278,10 @@ function getOpenPointItems() {
       areaLabel: AREA_META[area]?.label || 'Leitstand',
       workType: meta.workType,
       horizon: meta.horizon,
+      horizonKey: horizonKey(meta.horizon),
+      priority: task.priority || 'mittel',
+      dueDate: task.due_date || '',
+      assignedRole: task.assigned_role || '',
       createdAt: task.due_date || task.created_at || ''
     };
   });
@@ -278,6 +292,8 @@ function getOpenPointItems() {
 function openPointCard(item) {
   const categoryLabel = CATEGORY_LABELS[item.category] || item.category || item.areaLabel;
   const canArchive = isAdmin();
+  const canEdit = canEditOpenPoints();
+  const quickControls = canEdit ? openPointQuickControls(item) : '';
   return `
     <article class="list-item openpoint-item">
       <div class="item-head">
@@ -296,8 +312,82 @@ function openPointCard(item) {
       </div>
       ${item.subcategory ? `<div class="muted">${escapeHtml(item.subcategory)}</div>` : ''}
       ${item.body ? `<p class="openpoint-text">${escapeHtml(item.body)}</p>` : ''}
+      ${quickControls}
     </article>
   `;
+}
+
+function openPointQuickControls(item) {
+  const isTask = item.table === 'tasks';
+  return `
+    <div class="openpoint-quick-row">
+      <label>Status
+        <select class="openpoint-edit-control" data-table="${escapeHtml(item.table)}" data-id="${escapeHtml(item.rawId)}" data-field="status">
+          ${['offen', 'laufend', 'erledigt', 'blockiert'].map((status) => `<option value="${status}" ${item.status === status ? 'selected' : ''}>${status}</option>`).join('')}
+        </select>
+      </label>
+      ${isTask ? `
+        <label>Priorität
+          <select class="openpoint-edit-control" data-table="tasks" data-id="${escapeHtml(item.rawId)}" data-field="priority">
+            ${['hoch', 'mittel', 'niedrig'].map((priority) => `<option value="${priority}" ${item.priority === priority ? 'selected' : ''}>${priority}</option>`).join('')}
+          </select>
+        </label>
+        <label>Fällig
+          <input class="openpoint-edit-control" data-table="tasks" data-id="${escapeHtml(item.rawId)}" data-field="due_date" type="date" value="${escapeAttribute(item.dueDate)}">
+        </label>
+        <label>Horizont
+          <select class="openpoint-edit-control" data-table="tasks" data-id="${escapeHtml(item.rawId)}" data-field="horizon">
+            ${[
+              ['short', 'kurzfristig'],
+              ['medium', 'mittelfristig'],
+              ['long', 'langfristig']
+            ].map(([key, label]) => `<option value="${key}" ${item.horizonKey === key ? 'selected' : ''}>${label}</option>`).join('')}
+          </select>
+        </label>
+      ` : ''}
+    </div>
+  `;
+}
+
+async function onOpenPointQuickEdit(event) {
+  if (!canEditOpenPoints()) {
+    alert('Keine Berechtigung zum Bearbeiten offener Punkte.');
+    renderOpenPoints();
+    return;
+  }
+  const control = event.currentTarget;
+  const table = control.dataset.table;
+  const id = control.dataset.id;
+  const field = control.dataset.field;
+  if (!id || !['notes', 'tasks'].includes(table)) return;
+
+  const payload = {};
+  if (field === 'status') payload.status = control.value;
+  if (table === 'tasks' && field === 'priority') payload.priority = control.value;
+  if (table === 'tasks' && field === 'due_date') payload.due_date = control.value || null;
+  if (table === 'tasks' && field === 'horizon') {
+    const task = state.tasks.find((entry) => String(entry.id) === String(id));
+    if (!task) return;
+    payload.description = replaceTaskMetaLine(task.description, 'Zeithorizont', horizonLabel(control.value));
+    payload.subcategory = replaceIdeenlaborSubcategoryHorizon(task.subcategory, horizonLabel(control.value));
+  }
+  if (!Object.keys(payload).length) return;
+
+  try {
+    setSyncState('Speichere ...');
+    const { error } = await state.client.from(table).update(payload).eq('id', id);
+    if (error) throw error;
+    state.loaded = false;
+    await loadOpenPoints();
+    window.dispatchEvent(new CustomEvent('manheim:open-points-changed'));
+    setSyncState('Synchronisiert');
+  } catch (error) {
+    console.error('[open-points-module] quick edit failed', error);
+    alert('Änderung konnte nicht gespeichert werden: ' + (error.message || error));
+    setSyncState('Fehler');
+    state.loaded = false;
+    await loadOpenPoints();
+  }
 }
 
 async function onArchiveOpenPoint(event) {
@@ -562,6 +652,42 @@ function parseTaskMeta(description) {
   return meta;
 }
 
+function horizonKey(value) {
+  const normalized = String(value || '').trim().toLowerCase();
+  if (normalized.includes('kurz') || normalized === 'short') return 'short';
+  if (normalized.includes('lang') || normalized === 'long') return 'long';
+  if (normalized.includes('mittel') || normalized === 'medium') return 'medium';
+  return '';
+}
+
+function horizonLabel(value) {
+  const labels = { short: 'kurzfristig', medium: 'mittelfristig', long: 'langfristig' };
+  return labels[value] || labels[horizonKey(value)] || 'mittelfristig';
+}
+
+function replaceTaskMetaLine(description, label, value) {
+  const lines = String(description || '').split(/\r?\n/);
+  let replaced = false;
+  const nextLines = lines.map((line) => {
+    if (line.match(new RegExp(`^${label}:`, 'i'))) {
+      replaced = true;
+      return `${label}: ${value}`;
+    }
+    return line;
+  });
+  if (!replaced) nextLines.push(`${label}: ${value}`);
+  return nextLines.join('\n').trim();
+}
+
+function replaceIdeenlaborSubcategoryHorizon(subcategory, horizon) {
+  const parts = String(subcategory || '').split('/').map((part) => part.trim()).filter(Boolean);
+  if (parts[0]?.toLowerCase() === 'ideenlabor' && parts.length >= 3) {
+    parts[2] = horizon;
+    return parts.join(' / ');
+  }
+  return subcategory || `Ideenlabor / Aufgabe / ${horizon}`;
+}
+
 function statusRank(status) {
   const rank = { blockiert: 0, offen: 1, aktiv: 2, laufend: 2, erledigt: 9 };
   return rank[status] ?? 5;
@@ -613,6 +739,10 @@ function isAdmin() {
   return state.profile?.role === 'admin';
 }
 
+function canEditOpenPoints() {
+  return ['admin', 'technical_lead', 'assistant', 'professor'].includes(state.profile?.role);
+}
+
 function setSyncState(label) {
   const syncState = document.getElementById('syncState');
   if (syncState) syncState.textContent = label;
@@ -636,6 +766,10 @@ function escapeHtml(value) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
+}
+
+function escapeAttribute(value) {
+  return escapeHtml(value);
 }
 
 
