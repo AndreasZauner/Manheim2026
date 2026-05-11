@@ -594,6 +594,7 @@ async function createTaskFromDialog(form) {
     state.linkedOpenIdeaIds.add(Number(selected.id));
     state.taskDialog = null;
     window.dispatchEvent(new CustomEvent('manheim:archive-changed'));
+    window.dispatchEvent(new CustomEvent('manheim:open-points-changed'));
     renderIdeaLab();
   } catch (error) {
     console.error(error);
@@ -974,4 +975,5 @@ function injectStyles() {
   `;
   document.head.appendChild(style);
 }
+
 
