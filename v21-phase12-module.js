@@ -3,6 +3,7 @@ import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const MANAGER_ROLES = ['admin', 'professor', 'technical_lead', 'assistant'];
 const NAV = {
   dashboard: ['Leitstand', 'Tageslage, Prioritäten, Klärungsbedarf und Risiken'],
+  calendar: ['Kalender', 'Tages-, Wochen- und Monatsansicht der terminierten Arbeitsliste'],
   participants: ['Personal', 'Personaleinsatz, Zeiträume, Verbindlichkeit und Hinweise'],
   mindmap: ['Feld & Doku', 'Projektkarte, Dokumentation, Feldstruktur und Fortschritt'],
   tasks: ['Infrastruktur', 'Ressourcen, Logistik und operative Aufgaben'],
@@ -306,3 +307,4 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+
