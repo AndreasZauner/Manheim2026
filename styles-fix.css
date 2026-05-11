@@ -266,9 +266,9 @@ input[type="password"] {
 
 .openpoint-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 160px 140px;
+  grid-template-columns: minmax(180px, 1fr) 150px 130px 140px;
   gap: 10px;
-  min-width: min(100%, 520px);
+  min-width: min(100%, 660px);
 }
 
 .openpoint-filters input,
@@ -521,3 +521,4 @@ input[type="password"] {
     transition: none;
   }
 }
+

@@ -57,6 +57,7 @@ function initOpenPointsModule() {
   els.search = document.getElementById('openPointSearch');
   els.areaFilter = document.getElementById('openPointAreaFilter');
   els.statusFilter = document.getElementById('openPointStatusFilter');
+  els.sourceFilter = document.getElementById('openPointSourceFilter');
   els.summary = document.getElementById('openPointSummary');
   els.list = document.getElementById('openPointList');
   els.title = document.getElementById('pageTitle');
@@ -69,13 +70,17 @@ function initOpenPointsModule() {
     button.addEventListener('click', () => els.navButton.classList.remove('active'));
   });
 
-  [els.search, els.areaFilter, els.statusFilter].forEach((control) => {
+  [els.search, els.areaFilter, els.statusFilter, els.sourceFilter].forEach((control) => {
     control?.addEventListener('input', renderOpenPoints);
     control?.addEventListener('change', renderOpenPoints);
   });
 
   els.form?.addEventListener('submit', onOpenPointSubmit);
   window.addEventListener('manheim:archive-changed', () => {
+    state.loaded = false;
+    if (els.tab.classList.contains('active') && !state.loading) loadOpenPoints();
+  });
+  window.addEventListener('manheim:open-points-changed', () => {
     state.loaded = false;
     if (els.tab.classList.contains('active') && !state.loading) loadOpenPoints();
   });
@@ -191,23 +196,25 @@ function renderOpenPoints() {
   const query = (els.search?.value || '').trim().toLowerCase();
   const areaFilter = els.areaFilter?.value || 'alle';
   const statusFilter = els.statusFilter?.value || 'alle';
+  const sourceFilter = els.sourceFilter?.value || 'alle';
 
   const filtered = items.filter((item) => {
-    const text = `${item.title} ${item.body} ${item.subcategory} ${item.areaLabel}`.toLowerCase();
+    const text = `${item.title} ${item.body} ${item.subcategory} ${item.areaLabel} ${item.source} ${item.workType || ''} ${item.horizon || ''}`.toLowerCase();
     const matchesQuery = !query || text.includes(query);
     const matchesArea = areaFilter === 'alle' || item.area === areaFilter;
     const matchesStatus = statusFilter === 'alle' || item.status === statusFilter;
-    return matchesQuery && matchesArea && matchesStatus;
+    const matchesSource = sourceFilter === 'alle' || item.sourceKey === sourceFilter;
+    return matchesQuery && matchesArea && matchesStatus && matchesSource;
   });
 
   if (els.summary) {
     const openCount = items.filter((item) => item.status !== 'erledigt').length;
     const financeCount = items.filter((item) => item.area === 'finanzen').length;
-    const mindmapCount = items.filter((item) => item.source === 'Mindmap').length;
+    const ideaLabCount = items.filter((item) => item.sourceKey === 'ideenlabor').length;
     els.summary.innerHTML = `
       <span class="pill">Gesamt: ${items.length}</span>
       <span class="pill">Offen: ${openCount}</span>
-      <span class="pill">Mindmap: ${mindmapCount}</span>
+      <span class="pill">Ideenlabor: ${ideaLabCount}</span>
       <span class="pill">Finanzen: ${financeCount}</span>
       <span class="pill">Angezeigt: ${filtered.length}</span>
     `;
@@ -230,6 +237,7 @@ function getOpenPointItems() {
       table: 'notes',
       rawId: note.id,
       source: note.note_type === 'idea' ? 'Idee' : 'Notiz',
+      sourceKey: note.note_type === 'idea' ? 'idee' : 'notiz',
       title: note.title || 'Ohne Titel',
       body: note.body || '',
       category: note.category,
@@ -249,7 +257,8 @@ function getOpenPointItems() {
       id: `task-${task.id}`,
       table: 'tasks',
       rawId: task.id,
-      source: meta.ideaId ? 'Mindmap' : 'Aufgabe',
+      source: meta.ideaId ? 'Ideenlabor' : 'Aufgabe',
+      sourceKey: meta.ideaId ? 'ideenlabor' : 'aufgabe',
       title: task.title || 'Ohne Titel',
       body: [meta.body, due, task.assigned_role].filter(Boolean).join(' - '),
       category: task.category,
@@ -628,4 +637,5 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+
 
