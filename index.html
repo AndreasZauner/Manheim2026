@@ -101,7 +101,7 @@
         <button class="nav-btn" data-tab="tasks">Infrastruktur</button>
         <button class="nav-btn" data-tab="ideas">Finanzen</button>
         <button class="nav-btn" data-tab="admin" id="adminTabButton">Verwaltung</button>
-        <button class="nav-btn hidden" data-tab="calendar">Kalender</button>
+        <button class="nav-btn" data-tab="calendar">Kalender</button>
         <button class="nav-btn hidden" data-tab="help">Hilfe &amp; Setup</button>
       </nav>
       <div class="sidebar-meta">
@@ -220,7 +220,26 @@
         <div class="two-col"><section class="panel"><div class="panel-head"><h3>Neue Aufgabe</h3><span class="muted">mit automatischer Zuordnung</span></div><form id="taskForm" class="form-grid"><label class="span-2">Titel<input type="text" name="title" required /></label><label>Kategorie<select name="category" id="taskFormCategory"></select></label><label>Unterpunkt<input type="text" name="subcategory" /></label><label>F&auml;llig am<input type="date" name="due_date" /></label><label>Status<select name="status"><option value="offen">offen</option><option value="laufend">laufend</option><option value="erledigt">erledigt</option><option value="blockiert">blockiert</option></select></label><label>Priorit&auml;t<select name="priority"><option value="hoch">hoch</option><option value="mittel" selected>mittel</option><option value="niedrig">niedrig</option></select></label><label>Zugewiesene Rolle<input type="text" name="assigned_role" placeholder="z. B. Technische Leitung" /></label><label class="span-2">Beschreibung<textarea name="description" rows="4"></textarea></label><div class="span-2 suggestion-box" id="taskSuggestionBox"></div><div class="span-2 button-row"><button class="btn primary" type="submit">Aufgabe speichern</button></div></form></section><section class="panel"><div class="panel-head"><h3>Aufgabenliste</h3><span class="muted">zentral aus Supabase geladen</span></div><div id="taskList" class="stack-list"></div></section></div>
       </section>
 
-      <section id="calendarTab" class="tab"><div class="section-head"><div><h3>Kalender</h3><p class="muted">Monatsansicht auf Basis der F&auml;lligkeitsdaten aus den Aufgaben.</p></div><div class="button-row"><button id="prevMonth" class="btn small">&#9664;</button><div id="calendarLabel" class="calendar-label">&ndash;</div><button id="nextMonth" class="btn small">&#9654;</button></div></div><div id="calendarGrid" class="calendar-grid"></div></section>
+      <section id="calendarTab" class="tab">
+        <div class="section-head calendar-head">
+          <div>
+            <h3>Kalender</h3>
+            <p class="muted">Terminierte Aufgaben und offene Punkte aus der Arbeitsliste.</p>
+          </div>
+          <div class="calendar-toolbar">
+            <div class="segmented-control calendar-view-switch" id="calendarViewMode">
+              <button type="button" data-calendar-view="day">Tag</button>
+              <button type="button" data-calendar-view="week">Woche</button>
+              <button type="button" data-calendar-view="month">Monat</button>
+            </div>
+            <button id="prevMonth" class="btn small" type="button">&#9664;</button>
+            <div id="calendarLabel" class="calendar-label">&ndash;</div>
+            <button id="nextMonth" class="btn small" type="button">&#9654;</button>
+            <button id="todayCalendar" class="btn small" type="button">Heute</button>
+          </div>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </section>
 
       <section id="participantsTab" class="tab"><div class="section-head"><div><h3>Personal</h3><p class="muted">Personaleinsatz, Zeitr&auml;ume, Verbindlichkeit und Hinweise.</p></div></div><div class="two-col"><section class="panel" id="participantFormPanel"><div class="panel-head"><h3>Person hinzuf&uuml;gen</h3><span class="muted">nur f&uuml;r Leitungsrollen</span></div><form id="participantForm" class="form-grid"><label>Name<input type="text" name="full_name" required /></label><label>Rolle<input type="text" name="public_role" placeholder="Teilnehmende / Schnittleitung ..." /></label><label>Von<input type="date" name="availability_from" /></label><label>Bis<input type="date" name="availability_to" /></label><label>Status<select name="status"><option value="zugesagt">zugesagt</option><option value="gesetzt">gesetzt</option><option value="zu_kl&auml;ren">zu kl&auml;ren</option><option value="anzufragen">anzufragen</option></select></label><label>Telefon<input type="text" name="phone" /></label><label>E-Mail<input type="email" name="email" /></label><label class="span-2">Bemerkungen<textarea name="availability_note" rows="3"></textarea></label><label class="span-2">Interne Notiz<textarea name="internal_note" rows="3"></textarea></label><div class="span-2 button-row"><button class="btn primary" type="submit">Person speichern</button></div></form></section><section class="panel"><div class="panel-head"><h3>Anwesenheit &amp; Liste</h3><span class="muted">automatisch synchronisiert</span></div><div id="participantsSummary" class="summary-row"></div><div class="table-wrap"><table class="data-table"><thead id="participantsHead"></thead><tbody id="participantsBody"></tbody></table></div></section></div></section>
 
