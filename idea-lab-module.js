@@ -42,6 +42,7 @@ const state = {
   selectedId: null,
   draft: null,
   taskDialog: null,
+  notice: null,
   view: 'mindmap',
   search: '',
   area: 'all',
@@ -244,6 +245,7 @@ function renderIdeaLab() {
     <div class="idea-lab-page">
       ${renderHeader()}
       ${renderStatus()}
+      ${renderWorkflowNotice()}
       ${renderToolbar()}
       <div class="idea-lab-workspace ${state.view === 'list' ? 'list-mode' : ''}">
         <main class="idea-lab-main-panel">${state.view === 'list' ? renderListView() : renderMindmapView()}</main>
@@ -282,6 +284,17 @@ function renderStatus() {
     return '<div class="idea-lab-notice">Querverbindungen sind noch nicht aktiv: <code>supabase/idea_lab_mindmap_links.sql</code> ausführen.</div>';
   }
   return '';
+}
+
+function renderWorkflowNotice() {
+  if (!state.notice) return '';
+  return `
+    <div class="idea-lab-notice ${state.notice.type === 'success' ? 'success' : ''}">
+      <span>${escapeHtml(state.notice.message)}</span>
+      ${state.notice.openPoints ? '<button type="button" class="secondary-button" data-idea-action="open-points">Zur Arbeitsliste</button>' : ''}
+      <button type="button" class="link-action" data-idea-action="notice-clear">Schließen</button>
+    </div>
+  `;
 }
 
 function renderToolbar() {
@@ -435,6 +448,11 @@ function handleIdeaLabClick(event) {
   if (action === 'archive') archiveSelected();
   if (action === 'task') openTaskDialog();
   if (action === 'task-close') closeTaskDialog();
+  if (action === 'open-points') openOpenPointsFromIdeaLab();
+  if (action === 'notice-clear') {
+    state.notice = null;
+    renderIdeaLab();
+  }
   if (action === 'import-open') openImportDialog();
   if (action === 'import-close') closeImportDialog();
   if (action === 'import-save') importList();
@@ -545,6 +563,11 @@ async function archiveSelected() {
 function openTaskDialog() {
   const selected = getSelectedItem();
   if (!selected) return;
+  if (state.linkedOpenIdeaIds.has(Number(selected.id))) {
+    showTransferNotice('Dieser Mindmap-Knoten ist bereits in der Arbeitsliste vorhanden.', 'info');
+    return;
+  }
+  state.notice = null;
   state.taskDialog = {
     item: selected,
     area: workAreaForIdeaArea(selected.area),
@@ -579,6 +602,14 @@ async function createTaskFromDialog(form) {
   const button = form.querySelector('button[type="submit"]');
   try {
     if (button) button.disabled = true;
+    const existing = await findExistingTaskForIdea(selected.id);
+    if (existing) {
+      state.linkedOpenIdeaIds.add(Number(selected.id));
+      state.taskDialog = null;
+      window.dispatchEvent(new CustomEvent('manheim:open-points-changed'));
+      showTransferNotice('Dieser Punkt war bereits in der Arbeitsliste vorhanden.', 'info');
+      return;
+    }
     const { error } = await getClient().from('tasks').insert({
       title,
       description: buildTaskDescription(description, selected, workType, horizon),
@@ -595,12 +626,39 @@ async function createTaskFromDialog(form) {
     state.taskDialog = null;
     window.dispatchEvent(new CustomEvent('manheim:archive-changed'));
     window.dispatchEvent(new CustomEvent('manheim:open-points-changed'));
-    renderIdeaLab();
+    showTransferNotice('Offener Punkt wurde in der Arbeitsliste angelegt.', 'success');
   } catch (error) {
     console.error(error);
     window.alert(`Offener Punkt konnte nicht angelegt werden: ${error.message || error}`);
   } finally {
     if (button) button.disabled = false;
+  }
+}
+
+async function findExistingTaskForIdea(ideaId) {
+  const { data, error } = await getClient()
+    .from('tasks')
+    .select('id')
+    .ilike('description', `%Ideenlabor-ID: ${ideaId}%`)
+    .limit(1);
+  if (error) {
+    console.warn('Bestehender Arbeitslistenpunkt konnte nicht geprüft werden', error);
+    return null;
+  }
+  return data?.[0] || null;
+}
+
+function showTransferNotice(message, type = 'success') {
+  state.notice = { message, type, openPoints: true };
+  renderIdeaLab();
+}
+
+function openOpenPointsFromIdeaLab() {
+  document.getElementById('openPointsNavButton')?.click();
+  const sourceFilter = document.getElementById('openPointSourceFilter');
+  if (sourceFilter) {
+    sourceFilter.value = 'ideenlabor';
+    sourceFilter.dispatchEvent(new Event('change', { bubbles: true }));
   }
 }
 
