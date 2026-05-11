@@ -172,6 +172,27 @@ function bindStaticUi() {
   els.exportButton.addEventListener('click', exportBackup);
   els.taskCategoryFilter.addEventListener('change', renderTasks);
   els.taskStatusFilter.addEventListener('change', renderTasks);
+  window.addEventListener('manheim:open-points-changed', refreshTasksFromOpenPoints);
+}
+
+async function refreshTasksFromOpenPoints() {
+  if (!state.supabase || !state.session?.user?.id || state.loading) return;
+  try {
+    const { data, error } = await state.supabase
+      .from('tasks')
+      .select('*')
+      .order('due_date', { ascending: true, nullsFirst: false })
+      .order('id');
+    if (error) throw error;
+    state.tasks = data || [];
+    renderKpis();
+    renderUpcoming();
+    renderCockpit();
+    renderTasks();
+    renderCalendar();
+  } catch (error) {
+    console.warn('Arbeitsliste/Kalender konnten nicht automatisch aktualisiert werden', error);
+  }
 }
 
 function fillSelects() {
