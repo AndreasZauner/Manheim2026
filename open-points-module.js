@@ -203,9 +203,11 @@ function renderOpenPoints() {
   if (els.summary) {
     const openCount = items.filter((item) => item.status !== 'erledigt').length;
     const financeCount = items.filter((item) => item.area === 'finanzen').length;
+    const mindmapCount = items.filter((item) => item.source === 'Mindmap').length;
     els.summary.innerHTML = `
       <span class="pill">Gesamt: ${items.length}</span>
       <span class="pill">Offen: ${openCount}</span>
+      <span class="pill">Mindmap: ${mindmapCount}</span>
       <span class="pill">Finanzen: ${financeCount}</span>
       <span class="pill">Angezeigt: ${filtered.length}</span>
     `;
@@ -242,18 +244,21 @@ function getOpenPointItems() {
   const tasks = state.tasks.map((task) => {
     const area = areaForCategory(task.category);
     const due = task.due_date ? `Faellig: ${formatDate(task.due_date)}` : '';
+    const meta = parseTaskMeta(task.description);
     return {
       id: `task-${task.id}`,
       table: 'tasks',
       rawId: task.id,
-      source: 'Aufgabe',
+      source: meta.ideaId ? 'Mindmap' : 'Aufgabe',
       title: task.title || 'Ohne Titel',
-      body: [task.description, due, task.assigned_role].filter(Boolean).join(' - '),
+      body: [meta.body, due, task.assigned_role].filter(Boolean).join(' - '),
       category: task.category,
       subcategory: task.subcategory || '',
       status: task.status || 'offen',
       area,
       areaLabel: AREA_META[area]?.label || 'Leitstand',
+      workType: meta.workType,
+      horizon: meta.horizon,
       createdAt: task.due_date || task.created_at || ''
     };
   });
@@ -273,6 +278,8 @@ function openPointCard(item) {
             <span class="pill">${escapeHtml(item.areaLabel)}</span>
             <span class="chip">${escapeHtml(item.source)}</span>
             <span class="chip">${escapeHtml(categoryLabel)}</span>
+            ${item.workType ? `<span class="chip">${escapeHtml(item.workType)}</span>` : ''}
+            ${item.horizon ? `<span class="chip">${escapeHtml(item.horizon)}</span>` : ''}
             <span class="status ${escapeHtml(item.status)}">${escapeHtml(item.status)}</span>
           </div>
         </div>
@@ -519,6 +526,33 @@ function cleanAreaPrefix(value) {
   return String(value || '').replace(/^Finanzen\s*\/\s*/i, '').trim();
 }
 
+function parseTaskMeta(description) {
+  const lines = String(description || '').split(/\r?\n/);
+  const meta = { body: '', ideaId: null, workType: '', horizon: '' };
+  const bodyLines = [];
+  lines.forEach((line) => {
+    const ideaMatch = line.match(/^Ideenlabor-ID:\s*(\d+)/i);
+    const typeMatch = line.match(/^Typ:\s*(.+)$/i);
+    const horizonMatch = line.match(/^Zeithorizont:\s*(.+)$/i);
+    if (ideaMatch) {
+      meta.ideaId = Number(ideaMatch[1]);
+      return;
+    }
+    if (/^Quelle:\s*Ideenlabor/i.test(line)) return;
+    if (typeMatch) {
+      meta.workType = typeMatch[1].trim();
+      return;
+    }
+    if (horizonMatch) {
+      meta.horizon = horizonMatch[1].trim();
+      return;
+    }
+    bodyLines.push(line);
+  });
+  meta.body = bodyLines.join('\n').trim();
+  return meta;
+}
+
 function statusRank(status) {
   const rank = { blockiert: 0, offen: 1, aktiv: 2, laufend: 2, erledigt: 9 };
   return rank[status] ?? 5;
@@ -594,3 +628,4 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+

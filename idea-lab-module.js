@@ -15,6 +15,16 @@ const AREAS = [
 const TYPES = [['idea', 'Idee'], ['todo', 'To-do'], ['decision', 'Entscheidung'], ['note', 'Notiz']];
 const STATUSES = [['idea', 'Idee'], ['review', 'prüfen'], ['important', 'wichtig'], ['later', 'später'], ['done', 'umgesetzt'], ['archived', 'Archiv']];
 const PRIORITIES = [['high', 'hoch'], ['medium', 'mittel'], ['low', 'niedrig']];
+const WORK_AREAS = [
+  ['leitstand', 'Leitstand', 'steuerung'],
+  ['personal', 'Personal', 'personal'],
+  ['feld_doku', 'Feld & Doku', 'dokumentation'],
+  ['infrastruktur', 'Infrastruktur', 'logistik'],
+  ['finanzen', 'Finanzen', 'logistik'],
+  ['verwaltung', 'Verwaltung', 'steuerung']
+];
+const WORK_TYPES = [['aufgabe', 'Aufgabe'], ['klaerung', 'Klärung'], ['entscheidung', 'Entscheidung'], ['risiko', 'Risiko']];
+const WORK_HORIZONS = [['short', 'kurzfristig'], ['medium', 'mittelfristig'], ['long', 'langfristig']];
 
 const state = {
   client: null,
@@ -27,9 +37,11 @@ const state = {
   linksError: '',
   items: [],
   links: [],
+  linkedOpenIdeaIds: new Set(),
   linksAvailable: true,
   selectedId: null,
   draft: null,
+  taskDialog: null,
   view: 'mindmap',
   search: '',
   area: 'all',
@@ -127,12 +139,19 @@ async function loadItems() {
   state.linksError = '';
   renderIdeaLab();
   try {
-    const [itemsRes, linksRes] = await Promise.all([
+    const [itemsRes, linksRes, tasksRes] = await Promise.all([
       client.from('idea_lab_items').select('*').order('sort_order', { ascending: true, nullsFirst: false }).order('updated_at', { ascending: false }),
-      client.from('idea_lab_links').select('*').order('created_at', { ascending: true })
+      client.from('idea_lab_links').select('*').order('created_at', { ascending: true }),
+      client.from('tasks').select('id,title,description,status').neq('status', 'erledigt')
     ]);
     if (itemsRes.error) throw itemsRes.error;
     state.items = itemsRes.data || [];
+    if (tasksRes.error) {
+      state.linkedOpenIdeaIds = new Set();
+      console.warn('Arbeitslisten-Verknüpfungen konnten nicht geladen werden', tasksRes.error);
+    } else {
+      state.linkedOpenIdeaIds = new Set((tasksRes.data || []).map(task => extractIdeaLabId(task.description)).filter(Boolean));
+    }
     if (linksRes.error) {
       state.links = [];
       state.linksAvailable = false;
@@ -231,6 +250,7 @@ function renderIdeaLab() {
         <aside class="idea-lab-detail-panel">${renderDetailPanel()}</aside>
       </div>
       ${renderImportDialog()}
+      ${renderTaskDialog()}
     </div>
   `;
   window.requestAnimationFrame(mountMindmapIfNeeded);
@@ -296,6 +316,7 @@ function renderMindmapView() {
           <button type="button" class="secondary-button" data-idea-action="mind-fit">Zentrieren</button>
           <button type="button" class="secondary-button" data-idea-action="mind-child">Unterpunkt</button>
           <button type="button" class="secondary-button" data-idea-action="mind-sibling">Nachbaridee</button>
+          <button type="button" class="secondary-button" data-idea-action="task">${selectedHasOpenTask() ? 'In Arbeitsliste' : 'Als offenen Punkt'}</button>
           <button type="button" class="secondary-button" data-idea-action="import-open">Liste einfügen</button>
           <button type="button" class="primary-button" data-idea-action="mind-save">Speichern</button>
         </div>
@@ -335,6 +356,7 @@ function renderDetailPanel() {
   return `
     <form id="ideaLabForm" class="idea-lab-form">
       <h4>${state.draft ? 'Neue Idee' : 'Knoten bearbeiten'}</h4>
+      ${selected && !state.draft && state.linkedOpenIdeaIds.has(Number(selected.id)) ? '<div class="idea-lab-linked-badge">Bereits in der Arbeitsliste</div>' : ''}
       <label>Titel<input name="title" required value="${escapeAttribute(item.title || '')}" placeholder="Kurz und eindeutig"></label>
       <label>Beschreibung / Notiz<textarea name="description" rows="6" placeholder="Gedanke, To-do, offene Frage oder Kontext">${escapeHtml(item.description || '')}</textarea></label>
       <div class="idea-lab-field-grid">
@@ -349,7 +371,7 @@ function renderDetailPanel() {
         <button type="button" class="secondary-button" data-idea-action="cancel">Abbrechen</button>
         ${selected && !state.draft ? '<button type="button" class="danger-button" data-idea-action="archive">Archivieren</button>' : ''}
       </div>
-      ${selected && !state.draft ? '<button type="button" class="link-action" data-idea-action="task">Als Aufgabe vormerken</button>' : ''}
+      ${selected && !state.draft ? `<button type="button" class="link-action" data-idea-action="task">${state.linkedOpenIdeaIds.has(Number(selected.id)) ? 'Weiteren offenen Punkt anlegen' : 'In Arbeitsliste übernehmen'}</button>` : ''}
     </form>
   `;
 }
@@ -364,6 +386,31 @@ function renderImportDialog() {
         <label>Liste<textarea id="ideaImportText" rows="9" placeholder="- Punkt eins&#10;- Punkt zwei&#10;3. Punkt drei"></textarea></label>
         <div class="idea-lab-form-actions"><button type="button" class="primary-button" data-idea-action="import-save">Einfügen</button><button type="button" class="secondary-button" data-idea-action="import-close">Abbrechen</button></div>
       </div>
+    </div>
+  `;
+}
+
+function renderTaskDialog() {
+  const selected = state.taskDialog?.item;
+  if (!selected) return '';
+  const suggested = state.taskDialog;
+  return `
+    <div class="idea-import-backdrop" id="ideaTaskDialog">
+      <form class="idea-import-dialog idea-task-dialog" id="ideaTaskForm">
+        <div class="idea-import-head"><h4>In Arbeitsliste übernehmen</h4><button type="button" data-idea-action="task-close" aria-label="Schließen">×</button></div>
+        <p class="idea-task-source">Aus Mindmap-Knoten: <strong>${escapeHtml(selected.title || 'Ohne Titel')}</strong></p>
+        <label>Titel<input name="title" required value="${escapeAttribute(selected.title || '')}"></label>
+        <label>Beschreibung<textarea name="description" rows="4">${escapeHtml(selected.description || '')}</textarea></label>
+        <div class="idea-lab-field-grid">
+          <label>Bereich<select name="area">${WORK_AREAS.map(([value, label]) => `<option value="${value}" ${suggested.area === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+          <label>Typ<select name="work_type">${WORK_TYPES.map(([value, label]) => `<option value="${value}" ${suggested.workType === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+          <label>Priorität<select name="priority">${PRIORITIES.map(([value, label]) => `<option value="${value}" ${(suggested.priority || 'medium') === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+          <label>Zeithorizont<select name="horizon">${WORK_HORIZONS.map(([value, label]) => `<option value="${value}" ${suggested.horizon === value ? 'selected' : ''}>${label}</option>`).join('')}</select></label>
+          <label>Fällig am<input name="due_date" type="date"></label>
+          <label>Zuständig<input name="assigned_role" value="${escapeAttribute(suggested.assignedRole)}"></label>
+        </div>
+        <div class="idea-lab-form-actions"><button type="submit" class="primary-button">Offenen Punkt anlegen</button><button type="button" class="secondary-button" data-idea-action="task-close">Abbrechen</button></div>
+      </form>
     </div>
   `;
 }
@@ -386,7 +433,8 @@ function handleIdeaLabClick(event) {
   if (action === 'mind-save') persistMindmapNow();
   if (action === 'cancel') cancelEdit();
   if (action === 'archive') archiveSelected();
-  if (action === 'task') createTaskFromSelected();
+  if (action === 'task') openTaskDialog();
+  if (action === 'task-close') closeTaskDialog();
   if (action === 'import-open') openImportDialog();
   if (action === 'import-close') closeImportDialog();
   if (action === 'import-save') importList();
@@ -415,9 +463,9 @@ function handleIdeaLabChange(event) {
 }
 
 function handleIdeaLabSubmit(event) {
-  if (event.target?.id !== 'ideaLabForm') return;
   event.preventDefault();
-  saveItem(event.target);
+  if (event.target?.id === 'ideaLabForm') saveItem(event.target);
+  if (event.target?.id === 'ideaTaskForm') createTaskFromDialog(event.target);
 }
 
 function startNewDraft() {
@@ -494,27 +542,64 @@ async function archiveSelected() {
   }
 }
 
-async function createTaskFromSelected() {
+function openTaskDialog() {
   const selected = getSelectedItem();
   if (!selected) return;
-  if (!window.confirm('Diesen Ideenlabor-Eintrag als Aufgabe vormerken?')) return;
-  const categoryMap = { website: 'Steuerung', personal: 'Personal', field: 'Dokumentation', map: 'Dokumentation', weather: 'Steuerung', finance: 'Logistik', logistics: 'Logistik', general: 'Steuerung' };
+  state.taskDialog = {
+    item: selected,
+    area: workAreaForIdeaArea(selected.area),
+    workType: selected.item_type === 'decision' ? 'entscheidung' : selected.item_type === 'todo' ? 'aufgabe' : 'klaerung',
+    priority: selected.priority || 'medium',
+    horizon: selected.status === 'later' ? 'long' : selected.priority === 'high' ? 'short' : 'medium',
+    assignedRole: assignedRoleForIdeaArea(selected.area)
+  };
+  renderIdeaLab();
+}
+
+function closeTaskDialog() {
+  state.taskDialog = null;
+  renderIdeaLab();
+}
+
+async function createTaskFromDialog(form) {
+  const selected = state.taskDialog?.item || getSelectedItem();
+  if (!selected) return;
+  const data = new FormData(form);
+  const area = String(data.get('area') || workAreaForIdeaArea(selected.area));
+  const areaMeta = WORK_AREAS.find(([value]) => value === area) || WORK_AREAS[0];
+  const workType = String(data.get('work_type') || 'aufgabe');
+  const horizon = String(data.get('horizon') || 'medium');
+  const priority = String(data.get('priority') || 'medium');
+  const description = String(data.get('description') || '').trim();
+  const title = String(data.get('title') || '').trim();
+  if (!title) {
+    window.alert('Bitte einen Titel eintragen.');
+    return;
+  }
+  const button = form.querySelector('button[type="submit"]');
   try {
+    if (button) button.disabled = true;
     const { error } = await getClient().from('tasks').insert({
-      title: selected.title,
-      description: selected.description || 'Aus dem Ideenlabor vorgemerkt.',
-      category: categoryMap[normalizeArea(selected.area)] || 'Steuerung',
-      subcategory: 'Ideenlabor',
+      title,
+      description: buildTaskDescription(description, selected, workType, horizon),
+      category: areaMeta[2],
+      subcategory: `Ideenlabor / ${workTypeLabel(workType)} / ${horizonLabel(horizon)}`,
       status: 'offen',
-      priority: selected.priority === 'high' ? 'hoch' : selected.priority === 'low' ? 'niedrig' : 'mittel',
-      assigned_role: 'Technische Leitung',
+      priority: taskPriority(priority),
+      due_date: String(data.get('due_date') || '') || null,
+      assigned_role: String(data.get('assigned_role') || '').trim() || assignedRoleForIdeaArea(selected.area),
       created_by: state.session.user.id
     });
     if (error) throw error;
-    window.alert('Aufgabe wurde vorgemerkt.');
+    state.linkedOpenIdeaIds.add(Number(selected.id));
+    state.taskDialog = null;
+    window.dispatchEvent(new CustomEvent('manheim:archive-changed'));
+    renderIdeaLab();
   } catch (error) {
     console.error(error);
-    window.alert(`Aufgabe konnte nicht angelegt werden: ${error.message || error}`);
+    window.alert(`Offener Punkt konnte nicht angelegt werden: ${error.message || error}`);
+  } finally {
+    if (button) button.disabled = false;
   }
 }
 
@@ -588,7 +673,7 @@ function buildChildNodes(parentKey, childrenMap) {
       const orderB = Number.isFinite(b.item.sort_order) ? b.item.sort_order : b.index;
       return orderA - orderB || String(a.item.title).localeCompare(String(b.item.title), 'de');
     })
-    .map(({ item }) => ({ id: `idea-${item.id}`, topic: item.title, expanded: true, tags: [statusLabel(item.status), priorityLabel(item.priority)], children: buildChildNodes(`idea-${item.id}`, childrenMap) }));
+    .map(({ item }) => ({ id: `idea-${item.id}`, topic: item.title, expanded: true, tags: [statusLabel(item.status), priorityLabel(item.priority), ...(state.linkedOpenIdeaIds.has(Number(item.id)) ? ['Arbeitsliste'] : [])], children: buildChildNodes(`idea-${item.id}`, childrenMap) }));
 }
 
 function scheduleMindmapPersist() {
@@ -727,6 +812,56 @@ function getSelectedItem() {
   return state.items.find(item => Number(item.id) === Number(state.selectedId)) || null;
 }
 
+function selectedHasOpenTask() {
+  const selected = getSelectedItem();
+  return Boolean(selected && state.linkedOpenIdeaIds.has(Number(selected.id)));
+}
+
+function extractIdeaLabId(value) {
+  const match = String(value || '').match(/Ideenlabor-ID:\s*(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function buildTaskDescription(description, item, workType, horizon) {
+  return [
+    description || 'Aus dem Ideenlabor übernommen.',
+    '',
+    `Quelle: Ideenlabor`,
+    `Ideenlabor-ID: ${item.id}`,
+    `Typ: ${workTypeLabel(workType)}`,
+    `Zeithorizont: ${horizonLabel(horizon)}`
+  ].join('\n');
+}
+
+function workAreaForIdeaArea(area) {
+  const normalized = normalizeArea(area);
+  if (normalized === 'personal') return 'personal';
+  if (['field', 'map', 'weather'].includes(normalized)) return 'feld_doku';
+  if (normalized === 'finance') return 'finanzen';
+  if (normalized === 'logistics') return 'infrastruktur';
+  return 'leitstand';
+}
+
+function assignedRoleForIdeaArea(area) {
+  const normalized = normalizeArea(area);
+  if (normalized === 'personal') return 'Technische Grabungsleitung';
+  if (['field', 'map', 'weather'].includes(normalized)) return 'Technische Grabungsleitung';
+  if (normalized === 'finance' || normalized === 'logistics') return 'Assistenz technische Grabungsleitung';
+  return 'Technische Grabungsleitung';
+}
+
+function taskPriority(priority) {
+  return priority === 'high' ? 'hoch' : priority === 'low' ? 'niedrig' : 'mittel';
+}
+
+function workTypeLabel(value) {
+  return WORK_TYPES.find(([key]) => key === value)?.[1] || 'Aufgabe';
+}
+
+function horizonLabel(value) {
+  return WORK_HORIZONS.find(([key]) => key === value)?.[1] || 'mittelfristig';
+}
+
 function parseMindIdeaId(id) {
   const match = String(id || '').replace(/^me/, '').match(/^idea-(\d+)$/);
   return match ? Number(match[1]) : null;
@@ -835,7 +970,8 @@ function injectStyles() {
   const style = document.createElement('style');
   style.id = 'ideaLabStyles';
   style.textContent = `
-    .idea-lab-nav-button{margin-top:6px}.idea-lab-tab.active{display:block}.idea-lab-page{display:flex;flex-direction:column;gap:14px}.idea-lab-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:18px;border:1px solid #d6e2ef;border-radius:16px;background:linear-gradient(135deg,#0f2a40,#1f5572);color:#fff;box-shadow:0 18px 40px rgba(15,42,64,.14)}.idea-lab-header h3{margin:4px 0 6px;font-size:30px}.idea-lab-header p{margin:0;color:rgba(255,255,255,.86)}.idea-lab-kicker{margin:0;color:rgba(255,255,255,.68)!important;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.idea-lab-header-status{display:grid;gap:4px;justify-items:end}.idea-lab-header-status span{border-radius:999px;background:rgba(255,255,255,.14);padding:8px 12px;font-weight:900}.idea-lab-header-status small{color:rgba(255,255,255,.75);font-weight:800}.idea-lab-toolbar{display:grid;grid-template-columns:auto minmax(220px,1fr) minmax(150px,210px) minmax(150px,210px);gap:12px;align-items:end}.idea-lab-toolbar label,.idea-lab-form label,.idea-import-dialog label{display:grid;gap:6px;color:#5a7088;font-size:13px;font-weight:700}.idea-lab-toolbar input,.idea-lab-toolbar select,.idea-lab-form input,.idea-lab-form select,.idea-lab-form textarea,.idea-import-dialog input,.idea-import-dialog select,.idea-import-dialog textarea{width:100%;border:1px solid #d2dfec;border-radius:10px;padding:10px 12px;color:#08233d;background:#fff;font:inherit}.segmented-control{display:inline-flex;gap:6px;padding:4px;border:1px solid #d6e2ef;border-radius:12px;background:#fff}.segmented-control button{border:0;border-radius:9px;padding:9px 14px;background:transparent;color:#0b2942;font-weight:800;cursor:pointer}.segmented-control button.active{background:#2b7de1;color:#fff}.idea-lab-workspace{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}.idea-lab-main-panel,.idea-lab-detail-panel{border:1px solid #d6e2ef;border-radius:16px;background:rgba(255,255,255,.96);box-shadow:0 16px 32px rgba(31,85,114,.07)}.idea-lab-main-panel{min-height:690px;padding:14px;overflow:hidden}.idea-lab-detail-panel{position:sticky;top:18px;padding:18px}.idea-lab-detail-panel h4{margin:0 0 12px;font-size:18px}.idea-mindmap-shell{display:grid;gap:12px;min-height:660px}.idea-mindmap-actions{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:12px;border:1px solid #d6e2ef;border-radius:14px;background:#f7fbff}.idea-mindmap-actions strong,.idea-mindmap-actions span{display:block}.idea-mindmap-actions strong{color:#08233d;font-size:15px}.idea-mindmap-actions span,.idea-mindmap-hint{color:#5a7088;font-size:13px;line-height:1.35}.idea-mindmap-buttons,.idea-lab-form-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.idea-mindmap-canvas{height:min(72vh,760px);min-height:560px;width:100%;overflow:hidden;border:1px solid #d6e2ef;border-radius:16px;background:#fff}.idea-mindmap-canvas .map-container{background:#fff}.idea-mindmap-canvas .topic{border-radius:10px;font-family:inherit;font-weight:800}.idea-list{display:grid;gap:8px}.idea-list-row{display:grid;grid-template-columns:minmax(240px,1fr) 150px 90px 90px;gap:10px;align-items:center;width:100%;border:1px solid #d6e2ef;border-radius:12px;background:#fff;color:#08233d;text-align:left;cursor:pointer;padding:11px 12px}.idea-list-row.active{border-color:#2b7de1;box-shadow:0 0 0 3px rgba(43,125,225,.14)}.idea-list-title{font-weight:850}.idea-chip{display:inline-flex;width:fit-content;align-items:center;border-radius:999px;padding:3px 8px;background:#edf4fb;color:#0b2942;font-size:12px;font-weight:850}.priority-high{background:#ffe9e6;color:#b82828}.priority-medium{background:#fff3d6;color:#946200}.priority-low{background:#e7f8ee;color:#0f7a3e}.idea-lab-form{display:grid;gap:12px}.idea-lab-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.idea-lab-notice,.idea-lab-empty{display:grid;gap:8px;margin-bottom:0;padding:12px 14px;border:1px solid #d6e2ef;border-radius:12px;background:#f6fbff;color:#39536c}.idea-lab-notice.error{border-color:#f0b7b7;background:#fff5f5;color:#b82828}.idea-lab-detail-empty{display:grid;gap:10px;color:#39536c}.link-action{width:fit-content;border:0;background:transparent;color:#1e67bd;font-weight:850;cursor:pointer}.danger-button{border:1px solid #d84040;border-radius:10px;padding:10px 14px;background:#fff0f0;color:#b82828;font-weight:850;cursor:pointer}.idea-import-backdrop{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:20px;background:rgba(8,35,61,.28)}.idea-import-backdrop[hidden]{display:none}.idea-import-dialog{display:grid;gap:13px;width:min(620px,100%);border-radius:18px;padding:20px;background:#fff;box-shadow:0 24px 80px rgba(8,35,61,.28)}.idea-import-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.idea-import-head h4{margin:0;font-size:19px}.idea-import-head button{border:0;background:transparent;color:#0b2942;font-size:26px;line-height:1;cursor:pointer}@media (max-width:1100px){.idea-lab-workspace{grid-template-columns:1fr}.idea-lab-detail-panel{position:static}.idea-lab-main-panel{min-height:620px}}@media (max-width:800px){.idea-lab-header,.idea-lab-toolbar,.idea-mindmap-actions{display:grid;grid-template-columns:1fr}.idea-lab-header-status{justify-items:start}.idea-mindmap-buttons,.idea-lab-form-actions{justify-content:flex-start}.idea-list-row{grid-template-columns:1fr}.idea-mindmap-canvas{height:70vh}}
+    .idea-lab-nav-button{margin-top:6px}.idea-lab-tab.active{display:block}.idea-lab-page{display:flex;flex-direction:column;gap:14px}.idea-lab-header{display:flex;align-items:flex-start;justify-content:space-between;gap:20px;padding:18px;border:1px solid #d6e2ef;border-radius:16px;background:linear-gradient(135deg,#0f2a40,#1f5572);color:#fff;box-shadow:0 18px 40px rgba(15,42,64,.14)}.idea-lab-header h3{margin:4px 0 6px;font-size:30px}.idea-lab-header p{margin:0;color:rgba(255,255,255,.86)}.idea-lab-kicker{margin:0;color:rgba(255,255,255,.68)!important;font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.idea-lab-header-status{display:grid;gap:4px;justify-items:end}.idea-lab-header-status span{border-radius:999px;background:rgba(255,255,255,.14);padding:8px 12px;font-weight:900}.idea-lab-header-status small{color:rgba(255,255,255,.75);font-weight:800}.idea-lab-toolbar{display:grid;grid-template-columns:auto minmax(220px,1fr) minmax(150px,210px) minmax(150px,210px);gap:12px;align-items:end}.idea-lab-toolbar label,.idea-lab-form label,.idea-import-dialog label{display:grid;gap:6px;color:#5a7088;font-size:13px;font-weight:700}.idea-lab-toolbar input,.idea-lab-toolbar select,.idea-lab-form input,.idea-lab-form select,.idea-lab-form textarea,.idea-import-dialog input,.idea-import-dialog select,.idea-import-dialog textarea{width:100%;border:1px solid #d2dfec;border-radius:10px;padding:10px 12px;color:#08233d;background:#fff;font:inherit}.segmented-control{display:inline-flex;gap:6px;padding:4px;border:1px solid #d6e2ef;border-radius:12px;background:#fff}.segmented-control button{border:0;border-radius:9px;padding:9px 14px;background:transparent;color:#0b2942;font-weight:800;cursor:pointer}.segmented-control button.active{background:#2b7de1;color:#fff}.idea-lab-workspace{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:start}.idea-lab-main-panel,.idea-lab-detail-panel{border:1px solid #d6e2ef;border-radius:16px;background:rgba(255,255,255,.96);box-shadow:0 16px 32px rgba(31,85,114,.07)}.idea-lab-main-panel{min-height:690px;padding:14px;overflow:hidden}.idea-lab-detail-panel{position:sticky;top:18px;padding:18px}.idea-lab-detail-panel h4{margin:0 0 12px;font-size:18px}.idea-lab-linked-badge{width:fit-content;border-radius:999px;background:#e7f8ee;color:#0f7a3e;border:1px solid #bfe7cc;padding:5px 9px;font-size:12px;font-weight:900}.idea-mindmap-shell{display:grid;gap:12px;min-height:660px}.idea-mindmap-actions{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:12px;border:1px solid #d6e2ef;border-radius:14px;background:#f7fbff}.idea-mindmap-actions strong,.idea-mindmap-actions span{display:block}.idea-mindmap-actions strong{color:#08233d;font-size:15px}.idea-mindmap-actions span,.idea-mindmap-hint{color:#5a7088;font-size:13px;line-height:1.35}.idea-mindmap-buttons,.idea-lab-form-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}.idea-mindmap-canvas{height:min(72vh,760px);min-height:560px;width:100%;overflow:hidden;border:1px solid #d6e2ef;border-radius:16px;background:#fff}.idea-mindmap-canvas .map-container{background:#fff}.idea-mindmap-canvas .topic{border-radius:10px;font-family:inherit;font-weight:800}.idea-list{display:grid;gap:8px}.idea-list-row{display:grid;grid-template-columns:minmax(240px,1fr) 150px 90px 90px;gap:10px;align-items:center;width:100%;border:1px solid #d6e2ef;border-radius:12px;background:#fff;color:#08233d;text-align:left;cursor:pointer;padding:11px 12px}.idea-list-row.active{border-color:#2b7de1;box-shadow:0 0 0 3px rgba(43,125,225,.14)}.idea-list-title{font-weight:850}.idea-chip{display:inline-flex;width:fit-content;align-items:center;border-radius:999px;padding:3px 8px;background:#edf4fb;color:#0b2942;font-size:12px;font-weight:850}.priority-high{background:#ffe9e6;color:#b82828}.priority-medium{background:#fff3d6;color:#946200}.priority-low{background:#e7f8ee;color:#0f7a3e}.idea-lab-form{display:grid;gap:12px}.idea-lab-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.idea-lab-notice,.idea-lab-empty{display:grid;gap:8px;margin-bottom:0;padding:12px 14px;border:1px solid #d6e2ef;border-radius:12px;background:#f6fbff;color:#39536c}.idea-lab-notice.error{border-color:#f0b7b7;background:#fff5f5;color:#b82828}.idea-lab-detail-empty{display:grid;gap:10px;color:#39536c}.link-action{width:fit-content;border:0;background:transparent;color:#1e67bd;font-weight:850;cursor:pointer}.danger-button{border:1px solid #d84040;border-radius:10px;padding:10px 14px;background:#fff0f0;color:#b82828;font-weight:850;cursor:pointer}.idea-import-backdrop{position:fixed;inset:0;z-index:3000;display:grid;place-items:center;padding:20px;background:rgba(8,35,61,.28)}.idea-import-backdrop[hidden]{display:none}.idea-import-dialog{display:grid;gap:13px;width:min(620px,100%);border-radius:18px;padding:20px;background:#fff;box-shadow:0 24px 80px rgba(8,35,61,.28)}.idea-task-dialog{width:min(760px,100%)}.idea-task-source{margin:0;color:#5a7088}.idea-import-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.idea-import-head h4{margin:0;font-size:19px}.idea-import-head button{border:0;background:transparent;color:#0b2942;font-size:26px;line-height:1;cursor:pointer}@media (max-width:1100px){.idea-lab-workspace{grid-template-columns:1fr}.idea-lab-detail-panel{position:static}.idea-lab-main-panel{min-height:620px}}@media (max-width:800px){.idea-lab-header,.idea-lab-toolbar,.idea-mindmap-actions{display:grid;grid-template-columns:1fr}.idea-lab-header-status{justify-items:start}.idea-mindmap-buttons,.idea-lab-form-actions{justify-content:flex-start}.idea-list-row,.idea-lab-field-grid{grid-template-columns:1fr}.idea-mindmap-canvas{height:70vh}}
   `;
   document.head.appendChild(style);
 }
+
