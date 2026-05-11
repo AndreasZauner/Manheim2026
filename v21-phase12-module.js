@@ -63,8 +63,7 @@ async function loadUser() {
     state.isManager = false;
     return;
   }
-  const sessionRequest = window.getManheimAuthSession?.(state.client) || state.client.auth.getSession();
-  const { data: sessionData } = await sessionRequest;
+  const { data: sessionData } = await state.client.auth.getSession();
   state.userId = sessionData?.session?.user?.id || null;
   if (!state.userId) {
     state.isManager = false;
@@ -239,7 +238,6 @@ function drawerMarkup() {
         <datalist id="v21SpecialFunctions">${options}</datalist>
         <label class="full">Öffentliche Bemerkung<textarea class="personnel-field area" name="availability_note"></textarea></label>
         <label class="full">Interne Notiz<textarea class="personnel-field area" name="internal_note"></textarea></label>
-        <p id="v21PersonError" class="personnel-form-error full" role="alert"></p>
         <div class="personnel-drawer-footer full">
           <button class="btn" type="button" id="cancelV21PersonDrawer">Abbrechen</button>
           <button class="btn primary" type="submit">Person speichern</button>
@@ -269,21 +267,12 @@ function closeDrawer() {
 
 async function savePerson(event) {
   event.preventDefault();
-  const formElement = event.currentTarget;
-  const errorNode = document.getElementById('v21PersonError');
-  const submitButton = formElement.querySelector('button[type="submit"]');
-  if (errorNode) errorNode.textContent = '';
   if (!state.userId || !state.isManager) {
     await loadUser();
     applyV21Shell();
   }
-  if (!state.client || !state.userId || !state.isManager) {
-    const message = 'Person konnte nicht gespeichert werden: Ihre Berechtigung wurde noch nicht geladen. Bitte kurz neu laden und erneut versuchen.';
-    if (errorNode) errorNode.textContent = message;
-    else alert(message);
-    return;
-  }
-  const form = new FormData(formElement);
+  if (!state.client || !state.userId || !state.isManager) return;
+  const form = new FormData(event.currentTarget);
   const special = String(form.get('special_function') || '').trim();
   const participant = {
     full_name: String(form.get('full_name') || '').trim(),
@@ -295,50 +284,19 @@ async function savePerson(event) {
     source_note: ['Manuell in v2.1-Personal angelegt.', special ? `Zusatzfunktion: ${special}` : ''].filter(Boolean).join(' '),
     created_by: state.userId
   };
-  if (!participant.full_name) {
-    if (errorNode) errorNode.textContent = 'Bitte mindestens einen Namen eintragen.';
-    return;
-  }
-  if (submitButton) {
-    submitButton.disabled = true;
-    submitButton.textContent = 'Speichere ...';
-  }
-  try {
-    const { data, error } = await state.client.from('participants').insert(participant).select('id').single();
-    if (error) throw error;
-    const privatePayload = {
-      participant_id: data.id,
-      phone: String(form.get('phone') || '').trim() || null,
-      email: String(form.get('email') || '').trim() || null,
-      internal_note: String(form.get('internal_note') || '').trim() || null
-    };
-    if (privatePayload.phone || privatePayload.email || privatePayload.internal_note) {
-      const { error: privateError } = await state.client.from('participant_private').insert(privatePayload);
-      if (privateError) throw privateError;
-    }
-    if (participant.availability_from && participant.availability_to) {
-      const { error: slotError } = await state.client.from('participant_availability_slots').insert({
-        participant_id: data.id,
-        availability_from: participant.availability_from,
-        availability_to: participant.availability_to,
-        order_index: 1,
-        created_by: state.userId
-      });
-      if (slotError) console.warn('Primärer Zeitraum konnte nicht in participant_availability_slots gespiegelt werden', slotError);
-    }
-    formElement.reset();
-    closeDrawer();
-    document.getElementById('refreshButton')?.click();
-  } catch (error) {
-    const message = 'Person konnte nicht gespeichert werden: ' + (error?.message || error);
-    if (errorNode) errorNode.textContent = message;
-    else alert(message);
-  } finally {
-    if (submitButton) {
-      submitButton.disabled = false;
-      submitButton.textContent = 'Person speichern';
-    }
-  }
+  const { data, error } = await state.client.from('participants').insert(participant).select('id').single();
+  if (error) return alert('Person konnte nicht gespeichert werden: ' + error.message);
+  const privatePayload = {
+    participant_id: data.id,
+    phone: String(form.get('phone') || '').trim() || null,
+    email: String(form.get('email') || '').trim() || null,
+    internal_note: String(form.get('internal_note') || '').trim() || null
+  };
+  const { error: privateError } = await state.client.from('participant_private').insert(privatePayload);
+  if (privateError) return alert('Kontaktdaten konnten nicht gespeichert werden: ' + privateError.message);
+  event.currentTarget.reset();
+  closeDrawer();
+  document.getElementById('refreshButton')?.click();
 }
 
 function escapeHtml(value) {
@@ -349,3 +307,4 @@ function escapeHtml(value) {
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;');
 }
+
