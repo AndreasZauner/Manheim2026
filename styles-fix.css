@@ -266,9 +266,9 @@ input[type="password"] {
 
 .openpoint-filters {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) 150px 130px 140px;
+  grid-template-columns: minmax(180px, 1fr) 150px 130px 140px 150px;
   gap: 10px;
-  min-width: min(100%, 660px);
+  min-width: min(100%, 820px);
 }
 
 .openpoint-filters input,
@@ -519,6 +519,62 @@ input[type="password"] {
   .app-shell .sidebar::before,
   .app-shell .sidebar::after {
     transition: none;
+  }
+}
+
+.openpoint-quick-row {
+  display: grid;
+  grid-template-columns: minmax(130px, 160px) minmax(120px, 150px) minmax(140px, 170px) minmax(140px, 170px);
+  gap: 10px;
+  align-items: end;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid #d9e5f2;
+}
+
+.openpoint-quick-row label {
+  display: grid;
+  gap: 5px;
+  color: #5a7088;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.openpoint-quick-row select,
+.openpoint-quick-row input {
+  width: 100%;
+  border: 1px solid #d2dfec;
+  border-radius: 9px;
+  background: #fff;
+  color: #08233d;
+  font: inherit;
+  font-weight: 750;
+  padding: 7px 9px;
+}
+
+.idea-lab-notice.success {
+  border-color: #bfe7cc;
+  background: #f0fbf4;
+  color: #0f6f39;
+}
+
+.idea-lab-notice.success,
+.idea-lab-notice:not(.error) {
+  align-items: center;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+@media (max-width: 900px) {
+  .openpoint-quick-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 620px) {
+  .openpoint-quick-row,
+  .idea-lab-notice.success,
+  .idea-lab-notice:not(.error) {
+    grid-template-columns: 1fr;
   }
 }
 
