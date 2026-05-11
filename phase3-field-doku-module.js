@@ -11,6 +11,7 @@ const FIELD_CATEGORY_KEYS = new Set(Object.keys(FIELD_CATEGORIES));
 const OPEN_STATUSES = new Set(['offen', 'laufend', 'blockiert', 'aktiv', 'geplant', 'pruefen']);
 const NAV = {
   dashboard: ['Leitstand', 'Tageslage, Priorit\u00e4ten, Kl\u00e4rungsbedarf und Risiken'],
+  calendar: ['Kalender', 'Tages-, Wochen- und Monatsansicht der terminierten Arbeitsliste'],
   participants: ['Personal', 'Personaleinsatz, Zeitr\u00e4ume, Verbindlichkeit und Hinweise'],
   mindmap: ['Feld & Doku', 'Karte, Feldstruktur, Dokumentationshinweise und Fortschritt'],
   tasks: ['Infrastruktur', 'Ressourcen, Logistik und operative Aufgaben'],
