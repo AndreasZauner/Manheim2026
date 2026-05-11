@@ -4,12 +4,24 @@ window.APP_CONFIG = {
   PROJECT_SLUG: 'lehrgrabung-kerpen-manheim-2026'
 };
 
+window.isManheimShareRoute = function isManheimShareRoute() {
+  const params = new URLSearchParams(window.location.search);
+  return window.__manheimShareRoute === 'personal' || params.get('share') === 'personal' || params.has('personalstand');
+};
+
 window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient) {
   if (!window.__manheimSupabaseClient) {
+    const shareMode = window.isManheimShareRoute?.();
     window.__manheimSupabaseClient = createClient(
       window.APP_CONFIG.SUPABASE_URL,
       window.APP_CONFIG.SUPABASE_ANON_KEY,
-      { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } }
+      {
+        auth: {
+          persistSession: !shareMode,
+          autoRefreshToken: !shareMode,
+          detectSessionInUrl: !shareMode
+        }
+      }
     );
     hardenManheimSupabaseClient(window.__manheimSupabaseClient);
   }
@@ -56,6 +68,8 @@ function wait(ms) {
 }
 
 (function bootExtensions() {
+  if (window.isManheimShareRoute?.()) return;
+
   document.addEventListener('DOMContentLoaded', loadMapModule);
   document.addEventListener('DOMContentLoaded', scheduleAttendanceModule);
   loadParticipantTimelineModule();
@@ -313,3 +327,4 @@ function wait(ms) {
   }
   function escapeHtml(value) { return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;'); }
 })();
+
