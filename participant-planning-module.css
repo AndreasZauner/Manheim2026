@@ -259,6 +259,18 @@
   color: #9a6510;
 }
 
+.personnel-badge.type-student {
+  background: #eef6ff;
+  border: 1px solid #cfe2fb;
+  color: #245d9f;
+}
+
+.personnel-badge.type-external {
+  background: #fff8db;
+  border: 1px solid #efd47a;
+  color: #8a6400;
+}
+
 .personnel-timeline-cell {
   display: flex;
   align-items: center;

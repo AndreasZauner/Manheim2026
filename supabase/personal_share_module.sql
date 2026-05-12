@@ -3,6 +3,26 @@
 
 create extension if not exists pgcrypto;
 
+alter table public.participants
+  add column if not exists person_type text not null default 'student';
+
+alter table public.participants
+  add column if not exists external_source text;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'participants_person_type_check'
+      and conrelid = 'public.participants'::regclass
+  ) then
+    alter table public.participants
+      add constraint participants_person_type_check
+      check (person_type in ('student', 'external'));
+  end if;
+end $$;
+
 create table if not exists public.personal_share_settings (
   id boolean primary key default true,
   password_hash text not null,
@@ -74,6 +94,8 @@ begin
         'availability_to', participants.availability_to,
         'availability_note', participants.availability_note,
         'source_note', participants.source_note,
+        'person_type', coalesce(participants.person_type, 'student'),
+        'external_source', participants.external_source,
         'private', jsonb_build_object(
           'phone', private_rows.phone,
           'email', private_rows.email,

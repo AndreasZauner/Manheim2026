@@ -100,7 +100,7 @@ async function loadPersonnel() {
     const { data: sessionData } = await getSession();
     if (!sessionData?.session?.user) return;
     const [participants, slots, absences] = await Promise.all([
-      state.client.from('participants').select('id,availability_from,availability_to,status'),
+      state.client.from('participants').select('*'),
       state.client.from('participant_availability_slots').select('participant_id,availability_from,availability_to,order_index').order('order_index', { ascending: true }),
       state.client.from('participant_absences').select('participant_id,absence_from,absence_to')
     ]);
@@ -199,10 +199,15 @@ function handleAction(action) {
 
 function buildSeries() {
   const counted = state.participants.filter(person => isCountedStatus(person.status) && slotsFor(person).length);
-  return projectDays().map(day => ({
-    date: day,
-    count: counted.filter(person => slotsFor(person).some(slot => inRange(day, slot.availability_from, slot.availability_to)) && !state.absences.some(absence => String(absence.participant_id) === String(person.id) && inRange(day, absence.absence_from, absence.absence_to))).length
-  }));
+  return projectDays().map(day => {
+    const planned = counted.filter(person => (
+      slotsFor(person).some(slot => inRange(day, slot.availability_from, slot.availability_to))
+      && !state.absences.some(absence => String(absence.participant_id) === String(person.id) && inRange(day, absence.absence_from, absence.absence_to))
+    ));
+    const count = planned.filter(person => personType(person) !== 'external').length;
+    const externalCount = planned.filter(person => personType(person) === 'external').length;
+    return { date: day, count, externalCount, totalCount: count + externalCount };
+  });
 }
 
 function renderChart(series) {
@@ -211,14 +216,16 @@ function renderChart(series) {
   const margin = { top: 16, right: 18, bottom: 20, left: 28 };
   const chartW = width - margin.left - margin.right;
   const chartH = height - margin.top - margin.bottom;
-  const maxY = Math.max(15, TARGET, ...series.map(day => day.count));
+  const maxY = Math.max(15, TARGET, ...series.map(day => Math.max(day.count, day.totalCount || day.count)));
   const x = index => margin.left + (index / Math.max(series.length - 1, 1)) * chartW;
   const y = value => margin.top + chartH - (value / maxY) * chartH;
   const path = series.map((day, index) => `${index ? 'L' : 'M'} ${x(index).toFixed(1)} ${y(day.count).toFixed(1)}`).join(' ');
+  const totalPath = series.map((day, index) => `${index ? 'L' : 'M'} ${x(index).toFixed(1)} ${y(day.totalCount || day.count).toFixed(1)}`).join(' ');
   return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Personalst&auml;rke im Grabungszeitraum">
     <rect class="critical-band" x="${margin.left}" y="${y(CRITICAL)}" width="${chartW}" height="${y(0) - y(CRITICAL)}"></rect>
     ${[0, CRITICAL, TARGET, maxY].map(tick => `<line class="grid" x1="${margin.left}" x2="${width - margin.right}" y1="${y(tick)}" y2="${y(tick)}"></line>`).join('')}
     <line class="target" x1="${margin.left}" x2="${width - margin.right}" y1="${y(TARGET)}" y2="${y(TARGET)}"></line>
+    <path class="line total" d="${totalPath}"></path>
     <path class="line" d="${path}"></path>
     <text class="axis" x="${margin.left}" y="${height - 5}">27.07.</text>
     <text class="axis" x="${width - margin.right}" y="${height - 5}" text-anchor="end">09.10.</text>
@@ -227,9 +234,10 @@ function renderChart(series) {
 
 function summarizeSeries(series) {
   const counts = series.map(day => day.count);
+  const totalCounts = series.map(day => day.totalCount || day.count);
   return {
     avg: counts.length ? (counts.reduce((sum, value) => sum + value, 0) / counts.length).toFixed(1).replace('.', ',') : '0',
-    max: Math.max(...counts, 0),
+    max: Math.max(...totalCounts, 0),
     critical: counts.filter(value => value <= CRITICAL).length
   };
 }
@@ -303,6 +311,10 @@ function isCountedStatus(status) {
   return ['gesetzt', 'zugesagt', 'zu_klaeren', 'erweiterbar', 'unklar'].includes(value);
 }
 
+function personType(person) {
+  return String(person?.person_type || 'student') === 'external' ? 'external' : 'student';
+}
+
 function isLeitstandActive() {
   const app = document.getElementById('app');
   return Boolean(app && !app.classList.contains('hidden') && document.getElementById('dashboardTab')?.classList.contains('active'));
@@ -330,7 +342,7 @@ function installStyles() {
     .leitstand-command-copy{padding:12px 0}.leitstand-command-copy span,.module-head span{color:#64758a;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.leitstand-command-copy h3{margin:4px 0 6px;font-size:1.15rem}.leitstand-command-copy p{margin:0;color:var(--muted);line-height:1.35}
     .leitstand-command-modules{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:12px}.leitstand-module{min-width:0;border:1px solid #d8e3ee;border-radius:12px;background:rgba(255,255,255,.9);box-shadow:0 12px 26px rgba(27,48,70,.08);padding:12px}.personnel-module{background:#fffaf2;border-color:#e3d5c3}
     .module-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}.module-head strong{display:block;color:var(--text);font-size:.95rem}.module-actions,.mini-kpis,.radar-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.mini-btn{border:1px solid #d8e3ee;background:#fff;color:var(--text);border-radius:999px;padding:4px 9px;font-size:.72rem;font-weight:800;cursor:pointer}.mini-btn.active{background:#1f78d8;border-color:#1f78d8;color:#fff}.mini-kpis span,.radar-tags span{border:1px solid #e1e8f0;border-radius:999px;padding:3px 7px;background:rgba(255,255,255,.72);color:#64758a;font-size:.7rem;font-weight:700}
-    .leitstand-chart{height:148px;border-radius:10px;background:#fffdf8;border:1px solid rgba(47,42,36,.08);overflow:hidden}.leitstand-command-header.is-compact .leitstand-chart{height:112px}.leitstand-chart svg{width:100%;height:100%;display:block}.leitstand-chart .grid{stroke:rgba(47,42,36,.12)}.leitstand-chart .critical-band{fill:rgba(220,38,38,.14)}.leitstand-chart .target{stroke:#16a34a;stroke-width:2;stroke-dasharray:7 6}.leitstand-chart .line{fill:none;stroke:#2563eb;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.leitstand-chart .axis{fill:#766b5d;font-size:10px}
+    .leitstand-chart{height:148px;border-radius:10px;background:#fffdf8;border:1px solid rgba(47,42,36,.08);overflow:hidden}.leitstand-command-header.is-compact .leitstand-chart{height:112px}.leitstand-chart svg{width:100%;height:100%;display:block}.leitstand-chart .grid{stroke:rgba(47,42,36,.12)}.leitstand-chart .critical-band{fill:rgba(220,38,38,.14)}.leitstand-chart .target{stroke:#16a34a;stroke-width:2;stroke-dasharray:7 6}.leitstand-chart .line{fill:none;stroke:#2563eb;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.leitstand-chart .line.total{stroke:#eab308;stroke-width:2.6;stroke-dasharray:6 4}.leitstand-chart .axis{fill:#766b5d;font-size:10px}
     .weather-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.weather-day{display:grid;gap:3px;border:1px solid #e1e8f0;border-radius:8px;padding:7px;background:#f8fbff;min-width:0}.weather-day strong,.weather-day span,.weather-day small{white-space:nowrap}.weather-day strong,.weather-day small,.weather-source,.weather-empty{font-size:.72rem}.weather-day span{font-weight:800}.weather-day small,.weather-source,.weather-empty{color:var(--muted)}.weather-source{margin:8px 0 0}.weather-radar{position:relative;height:142px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#eef5fb,#dce8f3);border:1px solid #d8e3ee}.weather-radar.is-open{height:230px}.weather-radar img{width:100%;height:100%;object-fit:cover;opacity:.86}.radar-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#0f2740;color:#fff;border-radius:999px;padding:4px 8px;font-size:.72rem;font-weight:800;box-shadow:0 6px 16px rgba(15,39,64,.22)}
     .dashboard-grid{grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);align-items:start}.dashboard-grid .panel:first-child{grid-row:span 2}
     @media (max-width:1280px){.leitstand-command-header{grid-template-columns:1fr}.leitstand-command-copy{padding-bottom:0}}@media (max-width:980px){.leitstand-command-modules,#dashboardTab .leitstand-kpi-strip,.weather-days{grid-template-columns:repeat(2,minmax(0,1fr))}}

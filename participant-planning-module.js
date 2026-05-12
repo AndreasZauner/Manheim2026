@@ -19,12 +19,13 @@ const state = {
   client: null,
   userId: null,
   isManager: false,
-  activeSubtab: 'presence',
+  activeSubtab: 'deployment',
   participants: [],
   privateRows: [],
   availabilitySlots: [],
   search: '',
   status: 'all',
+  personType: 'all',
   sort: 'role',
   loading: false,
   authListenerBound: false,
@@ -57,7 +58,7 @@ function injectStylesheet() {
   if (document.querySelector('link[href^="./participant-planning-module.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = './participant-planning-module.css?v=planning-20260504-2';
+  link.href = './participant-planning-module.css?v=external-helpers-20260512-1';
   document.head.appendChild(link);
 }
 
@@ -78,7 +79,6 @@ function bindAuthStateListener() {
       state.isManager = false;
       state.participants = [];
       state.privateRows = [];
-      state.availabilitySlots = [];
       renderDeployment();
       return;
     }
@@ -155,44 +155,36 @@ function updatePageTitle() {
 
 function ensurePlanningShell() {
   const tab = document.getElementById('participantsTab');
-  if (!tab || document.getElementById('participantPlanningTabs')) return;
+  if (!tab) return;
   const sectionHead = tab.querySelector('.section-head');
   if (!sectionHead) return;
   sectionHead.querySelector('h3')?.replaceChildren(document.createTextNode('Personaleinsatz'));
-  sectionHead.querySelector('p')?.replaceChildren(document.createTextNode('Anwesenheit, Teilnehmendenliste und Einsatzzeitr\u00e4ume im Grabungszeitraum.'));
+  sectionHead.querySelector('p')?.replaceChildren(document.createTextNode('Zeitr\u00e4ume, Verbindlichkeit und Hinweise.'));
+  document.getElementById('participantPlanningTabs')?.remove();
 
-  sectionHead.insertAdjacentHTML('afterend', `
-    <div id="participantPlanningTabs" class="participant-planning-tabs" role="tablist" aria-label="Personal">
-      <button type="button" class="btn small participant-planning-tab active" data-planning-tab="presence">Anwesenheit & Liste</button>
-      <button type="button" class="btn small participant-planning-tab" data-planning-tab="deployment">Personaleinsatz</button>
-    </div>
-  `);
-
-  const presenceWrapper = document.createElement('div');
-  presenceWrapper.id = 'participantPresenceView';
-  [...tab.children].forEach(child => {
-    if (child === sectionHead || child.id === 'participantPlanningTabs') return;
-    presenceWrapper.appendChild(child);
-  });
-  tab.appendChild(presenceWrapper);
-  tab.insertAdjacentHTML('beforeend', '<section id="personnelDeploymentView" class="personnel-deployment-view hidden"></section>');
-
-  document.querySelectorAll('.participant-planning-tab').forEach(button => {
-    button.addEventListener('click', () => {
-      state.activeSubtab = button.dataset.planningTab;
-      syncSubtabs();
-      if (state.activeSubtab === 'deployment') refreshParticipantPlanning();
+  if (!document.getElementById('participantPresenceView')) {
+    const presenceWrapper = document.createElement('div');
+    presenceWrapper.id = 'participantPresenceView';
+    presenceWrapper.className = 'hidden';
+    presenceWrapper.setAttribute('aria-hidden', 'true');
+    [...tab.children].forEach(child => {
+      if (child === sectionHead || child.id === 'personnelDeploymentView') return;
+      presenceWrapper.appendChild(child);
     });
-  });
+    tab.appendChild(presenceWrapper);
+  }
+  if (!document.getElementById('personnelDeploymentView')) {
+    tab.insertAdjacentHTML('beforeend', '<section id="personnelDeploymentView" class="personnel-deployment-view"></section>');
+  }
+  state.activeSubtab = 'deployment';
   syncSubtabs();
 }
 
 function syncSubtabs() {
-  document.querySelectorAll('.participant-planning-tab').forEach(button => {
-    button.classList.toggle('active', button.dataset.planningTab === state.activeSubtab);
-  });
-  document.getElementById('participantPresenceView')?.classList.toggle('hidden', state.activeSubtab !== 'presence');
-  document.getElementById('personnelDeploymentView')?.classList.toggle('hidden', state.activeSubtab !== 'deployment');
+  document.getElementById('participantPresenceView')?.classList.add('hidden');
+  document.getElementById('participantPresenceView')?.setAttribute('aria-hidden', 'true');
+  document.getElementById('personnelDeploymentView')?.classList.remove('hidden');
+  document.getElementById('personnelDeploymentView')?.removeAttribute('aria-hidden');
   updatePageTitle();
 }
 
@@ -201,7 +193,7 @@ async function loadData() {
   const [participantsResult, privateResult] = await Promise.all([
     state.client
       .from('participants')
-      .select('id,full_name,public_role,availability_from,availability_to,status,availability_note,source_note')
+      .select('*')
       .order('availability_from', { ascending: true, nullsFirst: false })
       .order('full_name'),
     state.isManager
@@ -248,6 +240,12 @@ function renderDeployment() {
           <option value="zugesagt" ${state.status === 'zugesagt' ? 'selected' : ''}>zugesagt</option>
           <option value="zu_kl\u00e4ren" ${state.status === 'zu_kl\u00e4ren' ? 'selected' : ''}>zu kl\u00e4ren</option>
           <option value="anzufragen" ${state.status === 'anzufragen' ? 'selected' : ''}>anzufragen</option>
+        </select>
+        <select id="personnelTypeFilter" class="personnel-select">
+          <option value="all" ${state.personType === 'all' ? 'selected' : ''}>Alle Gruppen</option>
+          <option value="student" ${state.personType === 'student' ? 'selected' : ''}>Regulär</option>
+          <option value="external" ${state.personType === 'external' ? 'selected' : ''}>Externe</option>
+          <option value="external_unclear" ${state.personType === 'external_unclear' ? 'selected' : ''}>Externe offen</option>
         </select>
         <select id="personnelSortBy" class="personnel-select">
           <option value="role" ${state.sort === 'role' ? 'selected' : ''}>Nach Rolle / Start</option>
@@ -297,6 +295,10 @@ function bindDeploymentUi() {
     state.status = event.target.value;
     renderDeployment();
   });
+  document.getElementById('personnelTypeFilter')?.addEventListener('change', event => {
+    state.personType = event.target.value;
+    renderDeployment();
+  });
   document.getElementById('personnelSortBy')?.addEventListener('change', event => {
     state.sort = event.target.value;
     renderDeployment();
@@ -315,7 +317,15 @@ function getFilteredParticipants() {
   return [...state.participants]
     .filter(person => !query || String(person.full_name || '').toLowerCase().includes(query))
     .filter(person => state.status === 'all' || person.status === state.status)
+    .filter(matchesPersonTypeFilter)
     .sort(comparePeople);
+}
+
+function matchesPersonTypeFilter(person) {
+  const type = personType(person);
+  if (state.personType === 'all') return true;
+  if (state.personType === 'external_unclear') return type === 'external' && hasProblem(person);
+  return type === state.personType;
 }
 
 function comparePeople(a, b) {
@@ -360,6 +370,7 @@ function renderDeploymentRow(person) {
         <div class="personnel-person-top">
           <strong>${escapeHtml(person.full_name || 'Ohne Namen')}</strong>
           <span class="personnel-badge ${statusClass(person.status)}">${prettyStatus(person.status)}</span>
+          <span class="personnel-badge type-${escapeHtml(personType(person))}">${personTypeLabel(person)}</span>
         </div>
         ${state.isManager ? `<button class="personnel-role personnel-role-edit-btn" type="button" data-id="${escapeHtml(person.id)}">${escapeHtml(person.public_role || 'Teilnehmende')}</button>` : `<span class="personnel-role">${escapeHtml(person.public_role || 'Teilnehmende')}</span>`}
         <div class="personnel-meta">
@@ -367,7 +378,7 @@ function renderDeploymentRow(person) {
           ${hasProblem(person) ? '<span class="personnel-badge warning">Kl\u00e4rungsbedarf</span>' : ''}
           ${state.isManager && privateData.email ? `<span class="personnel-badge outline">${escapeHtml(privateData.email)}</span>` : ''}
         </div>
-        ${state.isManager ? `<div class="personnel-actions"><button class="btn small personnel-date-edit-btn" type="button" data-id="${escapeHtml(person.id)}">Zeitraum ändern</button></div>` : ''}
+        ${state.isManager ? `<div class="personnel-actions"><button class="btn small personnel-date-edit-btn" type="button" data-id="${escapeHtml(person.id)}">Zeitraum aendern</button></div>` : ''}
       </div>
       <div class="personnel-timeline-cell">
         <div class="personnel-timeline-wrap">
@@ -386,6 +397,8 @@ function summaryCards(list) {
   const withNote = list.filter(person => Boolean(noteText(person))).length;
   return [
     ['Gesamt', list.length],
+    ['Regulär', list.filter(person => personType(person) === 'student').length],
+    ['Extern', list.filter(person => personType(person) === 'external').length],
     ['Final best\u00e4tigt', finalConfirmed],
     ['Erweiterbar', expandable],
     ['Kl\u00e4rungsbedarf', clarificationNeeded],
@@ -500,7 +513,7 @@ function ensureDateEditor() {
     <aside id="personnelDateDrawer" class="personnel-drawer personnel-date-drawer" aria-hidden="true">
       <div class="personnel-drawer-header">
         <div>
-          <h3>Teilnahmezeitraum ändern</h3>
+          <h3>Teilnahmezeitraum aendern</h3>
           <p><strong id="personnelDateName"></strong><br><span id="personnelDateRole"></span></p>
         </div>
         <button id="personnelDateClose" class="personnel-close" type="button" aria-label="Schliessen">x</button>
@@ -508,7 +521,7 @@ function ensureDateEditor() {
       <form id="personnelDateForm" class="personnel-date-form">
         <div class="personnel-drawer-body">
           <div id="personnelDateSlots" class="personnel-date-slots full"></div>
-          <button id="personnelAddSlot" class="personnel-add-slot-btn full" type="button" aria-label="Weiteren Zeitraum hinzufügen">+ Weiteren Zeitraum hinzufügen</button>
+          <button id="personnelAddSlot" class="personnel-add-slot-btn full" type="button" aria-label="Weiteren Zeitraum hinzufuegen">+ Weiteren Zeitraum hinzufuegen</button>
           <p id="personnelDateError" class="personnel-form-error full" role="alert"></p>
         </div>
         <div class="personnel-drawer-footer">
@@ -551,7 +564,7 @@ async function saveDateRange(event) {
   }
   const invalidSlot = slots.find(slot => !slot.availability_from || !slot.availability_to);
   if (invalidSlot) {
-    if (errorNode) errorNode.textContent = 'Bitte jeden Zeitraum vollständig mit Von und Bis ausfüllen.';
+    if (errorNode) errorNode.textContent = 'Bitte jeden Zeitraum vollstaendig mit Von und Bis ausfuellen.';
     return;
   }
   if (slots.some(slot => new Date(`${slot.availability_to}T00:00:00`) < new Date(`${slot.availability_from}T00:00:00`))) {
@@ -690,6 +703,14 @@ function renderPrintTimeline(person) {
   `;
 }
 
+function personType(person) {
+  return String(person?.person_type || 'student') === 'external' ? 'external' : 'student';
+}
+
+function personTypeLabel(person) {
+  return personType(person) === 'external' ? 'extern' : 'regulär';
+}
+
 function noteText(person) {
   const privateData = privateFor(person.id);
   return [person.availability_note, person.source_note, privateData.internal_note].filter(Boolean).join(' ');
@@ -733,10 +754,10 @@ function renderDateSlotInputs(drawer, slots) {
         <strong>Zeitraum ${index + 1}</strong>
         ${slots.length > 1 ? `<button class="personnel-remove-slot" type="button" data-remove-slot="${index}" aria-label="Zeitraum ${index + 1} entfernen">Entfernen</button>` : ''}
       </div>
-      <label>Verfügbar von
+      <label>Verfuegbar von
         <input class="personnel-field" type="date" data-slot-field="from" min="2026-07-27" max="2026-10-09" value="${escapeHtml(slot.availability_from || '')}" required>
       </label>
-      <label>Verfügbar bis
+      <label>Verfuegbar bis
         <input class="personnel-field" type="date" data-slot-field="to" min="2026-07-27" max="2026-10-09" value="${escapeHtml(slot.availability_to || '')}" required>
       </label>
     </div>
