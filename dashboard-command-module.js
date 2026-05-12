@@ -8,7 +8,7 @@ const PLACE = { lat: 50.889, lon: 6.646, label: 'Kerpen-Manheim' };
 
 const state = {
   client: null,
-  compact: localStorage.getItem('leitstandModulesCompact') === 'true',
+  compact: false,
   weatherMode: 'forecast',
   weatherOpen: false,
   participants: [],
@@ -142,11 +142,11 @@ function renderPersonnel() {
   const series = buildSeries();
   const stats = summarizeSeries(series);
   host.innerHTML = `
-    <div class="module-head">
-      <div><span>Personal</span><strong>T&auml;gliche Personalst&auml;rke</strong></div>
-      <button type="button" class="mini-btn" data-leitstand-module-action="toggle-size">${state.compact ? 'normal' : 'kompakt'}</button>
+    <div class="module-head personnel-chart-head">
+      <div><span>Personal &middot; Anwesenheit</span><strong>T&auml;gliche Personalst&auml;rke</strong></div>
+      <div class="module-actions"></div>
     </div>
-    <div class="mini-kpis"><span><b>${stats.avg}</b> &Oslash;</span><span><b>${stats.max}</b> Max</span><span><b>${stats.critical}</b> kritisch</span></div>
+    <div class="mini-kpis"><span><b>${stats.avg}</b> &Oslash;</span><span><b>${stats.max}</b> Max</span><span><b>${stats.maxTotal}</b> inkl. extern</span><span><b>${stats.critical}</b> kritisch</span></div>
     <div class="leitstand-chart">${renderChart(series)}</div>`;
 }
 
@@ -185,10 +185,6 @@ function renderRadar() {
 }
 
 function handleAction(action) {
-  if (action === 'toggle-size') {
-    state.compact = !state.compact;
-    localStorage.setItem('leitstandModulesCompact', String(state.compact));
-  }
   if (action === 'forecast') state.weatherMode = 'forecast';
   if (action === 'radar') state.weatherMode = 'radar';
   if (action === 'weather-open') state.weatherOpen = !state.weatherOpen;
@@ -211,25 +207,103 @@ function buildSeries() {
 }
 
 function renderChart(series) {
-  const width = 520;
-  const height = state.compact ? 112 : 148;
-  const margin = { top: 16, right: 18, bottom: 20, left: 28 };
+  const width = 620;
+  const height = state.compact ? 150 : 172;
+  const margin = { top: 18, right: 24, bottom: 28, left: 34 };
   const chartW = width - margin.left - margin.right;
   const chartH = height - margin.top - margin.bottom;
-  const maxY = Math.max(15, TARGET, ...series.map(day => Math.max(day.count, day.totalCount || day.count)));
+  const maxY = Math.max(15, Math.ceil(Math.max(...series.map(day => Math.max(day.count, day.totalCount || day.count)), TARGET) / 3) * 3);
   const x = index => margin.left + (index / Math.max(series.length - 1, 1)) * chartW;
   const y = value => margin.top + chartH - (value / maxY) * chartH;
-  const path = series.map((day, index) => `${index ? 'L' : 'M'} ${x(index).toFixed(1)} ${y(day.count).toFixed(1)}`).join(' ');
-  const totalPath = series.map((day, index) => `${index ? 'L' : 'M'} ${x(index).toFixed(1)} ${y(day.totalCount || day.count).toFixed(1)}`).join(' ');
+  const ticks = buildChartTicks(maxY).filter(tick => tick === 0 || tick === CRITICAL || tick === TARGET || tick === maxY);
+  const dateStep = series.length > 55 ? 14 : series.length > 28 ? 7 : 4;
+  const criticalTop = y(CRITICAL);
+  const lineSegments = buildColoredLineSegments(series, x, y);
+  const totalPath = buildLinePath(series, x, y, 'totalCount');
   return `<svg viewBox="0 0 ${width} ${height}" role="img" aria-label="Personalst&auml;rke im Grabungszeitraum">
-    <rect class="critical-band" x="${margin.left}" y="${y(CRITICAL)}" width="${chartW}" height="${y(0) - y(CRITICAL)}"></rect>
-    ${[0, CRITICAL, TARGET, maxY].map(tick => `<line class="grid" x1="${margin.left}" x2="${width - margin.right}" y1="${y(tick)}" y2="${y(tick)}"></line>`).join('')}
-    <line class="target" x1="${margin.left}" x2="${width - margin.right}" y1="${y(TARGET)}" y2="${y(TARGET)}"></line>
-    <path class="line total" d="${totalPath}"></path>
-    <path class="line" d="${path}"></path>
-    <text class="axis" x="${margin.left}" y="${height - 5}">27.07.</text>
-    <text class="axis" x="${width - margin.right}" y="${height - 5}" text-anchor="end">09.10.</text>
+    ${ticks.map(tick => `<line class="grid-line" x1="${margin.left}" x2="${width - margin.right}" y1="${y(tick).toFixed(1)}" y2="${y(tick).toFixed(1)}"></line><text class="tick-label" x="${margin.left - 9}" y="${(y(tick) + 3).toFixed(1)}" text-anchor="end">${tick}</text>`).join('')}
+    <rect class="critical-band" x="${margin.left}" y="${criticalTop.toFixed(1)}" width="${chartW}" height="${(y(0) - criticalTop).toFixed(1)}"></rect>
+    <line class="critical-boundary" x1="${margin.left}" x2="${width - margin.right}" y1="${y(CRITICAL).toFixed(1)}" y2="${y(CRITICAL).toFixed(1)}"></line>
+    <line class="target-line" x1="${margin.left}" x2="${width - margin.right}" y1="${y(TARGET).toFixed(1)}" y2="${y(TARGET).toFixed(1)}"></line>
+    <text class="target-text" x="${width - margin.right}" y="${(y(TARGET) - 5).toFixed(1)}" text-anchor="end">Ziel 10</text>
+    ${totalPath ? `<path class="attendance-line line-total" d="${totalPath}"></path>` : ''}
+    ${lineSegments.map(segment => `<path class="attendance-line ${segment.color}" d="${segment.path}"></path>`).join('')}
+    <g class="attendance-legend" transform="translate(${margin.left}, ${margin.top - 5})">
+      <line class="legend-line regular" x1="0" x2="18" y1="0" y2="0"></line><text x="24" y="3">regul&auml;r</text>
+      <line class="legend-line total" x1="78" x2="96" y1="0" y2="0"></line><text x="102" y="3">inkl. extern</text>
+    </g>
+    ${series.map((day, index) => renderDateTick(day, index, series.length, x, height, margin, dateStep)).join('')}
   </svg>`;
+}
+
+function buildColoredLineSegments(series, x, y) {
+  const segments = [];
+  for (let index = 1; index < series.length; index += 1) {
+    const start = pointForDay(series[index - 1], index - 1, x, y);
+    const end = pointForDay(series[index], index, x, y);
+    const breakpoints = [start];
+    [CRITICAL, TARGET].forEach(threshold => {
+      if (crossesThreshold(start.count, end.count, threshold)) {
+        const ratio = (threshold - start.count) / (end.count - start.count);
+        breakpoints.push({
+          x: start.x + (end.x - start.x) * ratio,
+          y: y(threshold),
+          count: threshold,
+          ratio
+        });
+      }
+    });
+    breakpoints.push({ ...end, ratio: 1 });
+    breakpoints
+      .sort((a, b) => (a.ratio ?? 0) - (b.ratio ?? 0))
+      .slice(0, -1)
+      .forEach((point, segmentIndex) => {
+        const next = breakpoints[segmentIndex + 1];
+        if (!next) return;
+        const midpoint = (point.count + next.count) / 2;
+        segments.push({
+          color: lineColorClass(midpoint),
+          path: `M ${point.x.toFixed(1)} ${point.y.toFixed(1)} L ${next.x.toFixed(1)} ${next.y.toFixed(1)}`
+        });
+      });
+  }
+  return segments;
+}
+
+function buildLinePath(series, x, y, key = 'count') {
+  return series.map((day, index) => `${index === 0 ? 'M' : 'L'} ${x(index).toFixed(1)} ${y(day[key] ?? day.count).toFixed(1)}`).join(' ');
+}
+
+function pointForDay(day, index, x, y) {
+  return { x: x(index), y: y(day.count), count: day.count, ratio: 0 };
+}
+
+function crossesThreshold(start, end, threshold) {
+  return (start < threshold && end > threshold) || (start > threshold && end < threshold);
+}
+
+function lineColorClass(value) {
+  if (value < CRITICAL) return 'line-critical';
+  if (value >= TARGET) return 'line-target';
+  return 'line-normal';
+}
+
+function renderDateTick(day, index, totalDays, x, height, margin, step) {
+  if (index !== 0 && index !== totalDays - 1 && index % step !== 0) return '';
+  return `<text class="tick-label x" x="${x(index).toFixed(1)}" y="${height - margin.bottom + 18}" text-anchor="middle">${formatAxisDate(day.date || day)}</text>`;
+}
+
+function formatAxisDate(value) {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+}
+
+function buildChartTicks(maxY) {
+  const ticks = [];
+  const step = maxY <= 15 ? 3 : Math.ceil(maxY / 5);
+  for (let tick = 0; tick <= maxY; tick += step) ticks.push(tick);
+  ticks.push(CRITICAL, TARGET);
+  return [...new Set(ticks)].sort((a, b) => a - b);
 }
 
 function summarizeSeries(series) {
@@ -237,8 +311,9 @@ function summarizeSeries(series) {
   const totalCounts = series.map(day => day.totalCount || day.count);
   return {
     avg: counts.length ? (counts.reduce((sum, value) => sum + value, 0) / counts.length).toFixed(1).replace('.', ',') : '0',
-    max: Math.max(...totalCounts, 0),
-    critical: counts.filter(value => value <= CRITICAL).length
+    max: Math.max(...counts, 0),
+    maxTotal: Math.max(...totalCounts, 0),
+    critical: counts.filter(value => value < CRITICAL).length
   };
 }
 
@@ -341,8 +416,8 @@ function installStyles() {
     .leitstand-command-header{display:grid;grid-template-columns:minmax(230px,.62fr) minmax(650px,1.9fr);gap:16px;align-items:start;margin-bottom:14px}
     .leitstand-command-copy{padding:12px 0}.leitstand-command-copy span,.module-head span{color:#64758a;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.leitstand-command-copy h3{margin:4px 0 6px;font-size:1.15rem}.leitstand-command-copy p{margin:0;color:var(--muted);line-height:1.35}
     .leitstand-command-modules{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:12px}.leitstand-module{min-width:0;border:1px solid #d8e3ee;border-radius:12px;background:rgba(255,255,255,.9);box-shadow:0 12px 26px rgba(27,48,70,.08);padding:12px}.personnel-module{background:#fffaf2;border-color:#e3d5c3}
-    .module-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}.module-head strong{display:block;color:var(--text);font-size:.95rem}.module-actions,.mini-kpis,.radar-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.mini-btn{border:1px solid #d8e3ee;background:#fff;color:var(--text);border-radius:999px;padding:4px 9px;font-size:.72rem;font-weight:800;cursor:pointer}.mini-btn.active{background:#1f78d8;border-color:#1f78d8;color:#fff}.mini-kpis span,.radar-tags span{border:1px solid #e1e8f0;border-radius:999px;padding:3px 7px;background:rgba(255,255,255,.72);color:#64758a;font-size:.7rem;font-weight:700}
-    .leitstand-chart{height:148px;border-radius:10px;background:#fffdf8;border:1px solid rgba(47,42,36,.08);overflow:hidden}.leitstand-command-header.is-compact .leitstand-chart{height:112px}.leitstand-chart svg{width:100%;height:100%;display:block}.leitstand-chart .grid{stroke:rgba(47,42,36,.12)}.leitstand-chart .critical-band{fill:rgba(220,38,38,.14)}.leitstand-chart .target{stroke:#16a34a;stroke-width:2;stroke-dasharray:7 6}.leitstand-chart .line{fill:none;stroke:#2563eb;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}.leitstand-chart .line.total{stroke:#eab308;stroke-width:2.6;stroke-dasharray:6 4}.leitstand-chart .axis{fill:#766b5d;font-size:10px}
+    .module-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}.module-head strong{display:block;color:var(--text);font-size:.95rem}.module-actions,.mini-kpis,.radar-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.mini-btn{border:1px solid #d8e3ee;background:#fff;color:var(--text);border-radius:999px;padding:4px 9px;font-size:.72rem;font-weight:800;cursor:pointer}.mini-btn.active{background:#1f78d8;border-color:#1f78d8;color:#fff}.mini-kpis span,.radar-tags span{border:1px solid #e1e8f0;border-radius:999px;padding:3px 7px;background:rgba(255,255,255,.72);color:#64758a;font-size:.7rem;font-weight:700}.mini-kpis b{color:#2f2a24}
+    .leitstand-chart{height:172px;border-radius:10px;background:#fffdf8;border:1px solid rgba(47,42,36,.08);overflow:hidden}.leitstand-command-header.is-compact .leitstand-chart{height:150px}.leitstand-chart svg{width:100%;height:100%;display:block}.leitstand-chart .grid-line{stroke:rgba(47,42,36,.12);stroke-width:1}.leitstand-chart .tick-label{fill:#766b5d;font-size:10px}.leitstand-chart .critical-band{fill:rgba(220,38,38,.16)}.leitstand-chart .critical-boundary{stroke:rgba(220,38,38,.45);stroke-width:1.2;stroke-dasharray:5 5}.leitstand-chart .target-line{stroke:#16a34a;stroke-width:2;stroke-dasharray:7 6;stroke-linecap:round}.leitstand-chart .target-text{fill:#166534;font-size:10px;font-weight:800}.leitstand-chart .attendance-line{fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 5px 7px rgba(37,99,235,.18))}.leitstand-chart .attendance-line.line-normal{stroke:#2563eb}.leitstand-chart .attendance-line.line-target{stroke:#16a34a;filter:drop-shadow(0 5px 7px rgba(22,163,74,.16))}.leitstand-chart .attendance-line.line-critical{stroke:#dc2626;filter:drop-shadow(0 5px 7px rgba(220,38,38,.14))}.leitstand-chart .attendance-line.line-total{stroke:#eab308;stroke-width:2.8;stroke-dasharray:6 4;filter:drop-shadow(0 5px 7px rgba(234,179,8,.18))}.leitstand-chart .attendance-legend text{fill:#766b5d;font-size:9px;font-weight:800}.leitstand-chart .legend-line{stroke-width:3;stroke-linecap:round}.leitstand-chart .legend-line.regular{stroke:#2563eb}.leitstand-chart .legend-line.total{stroke:#eab308;stroke-dasharray:5 3}
     .weather-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.weather-day{display:grid;gap:3px;border:1px solid #e1e8f0;border-radius:8px;padding:7px;background:#f8fbff;min-width:0}.weather-day strong,.weather-day span,.weather-day small{white-space:nowrap}.weather-day strong,.weather-day small,.weather-source,.weather-empty{font-size:.72rem}.weather-day span{font-weight:800}.weather-day small,.weather-source,.weather-empty{color:var(--muted)}.weather-source{margin:8px 0 0}.weather-radar{position:relative;height:142px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#eef5fb,#dce8f3);border:1px solid #d8e3ee}.weather-radar.is-open{height:230px}.weather-radar img{width:100%;height:100%;object-fit:cover;opacity:.86}.radar-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#0f2740;color:#fff;border-radius:999px;padding:4px 8px;font-size:.72rem;font-weight:800;box-shadow:0 6px 16px rgba(15,39,64,.22)}
     .dashboard-grid{grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);align-items:start}.dashboard-grid .panel:first-child{grid-row:span 2}
     @media (max-width:1280px){.leitstand-command-header{grid-template-columns:1fr}.leitstand-command-copy{padding-bottom:0}}@media (max-width:980px){.leitstand-command-modules,#dashboardTab .leitstand-kpi-strip,.weather-days{grid-template-columns:repeat(2,minmax(0,1fr))}}
