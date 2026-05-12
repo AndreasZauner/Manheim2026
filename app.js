@@ -552,29 +552,54 @@ function renderCalendarMonth() {
   const end = new Date(year, month + 1, 0);
   const firstDay = (start.getDay() + 6) % 7;
   const daysInMonth = end.getDate();
-  const previousEnd = new Date(year, month, 0).getDate();
   const names = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(n => `<div class="dayname">${n}</div>`).join('');
-  const cells = [];
-
-  for (let i = 0; i < firstDay; i++) {
-    const dayNum = previousEnd - firstDay + i + 1;
-    cells.push(`<div class="day mutedday"><div class="num">${dayNum}</div></div>`);
-  }
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(year, month, day);
-    const iso = toIsoDate(date);
-    const dayTasks = calendarTasksForDate(iso);
-    cells.push(`<div class="day ${toIsoDate(new Date()) === iso ? 'today' : ''}">
-      <div class="num">${day}</div>
-      <div class="calendar-day-stack">${dayTasks.slice(0, 4).map(calendarTaskPill).join('')}</div>
-      ${dayTasks.length > 4 ? `<span class="calendar-more">+${dayTasks.length - 4}</span>` : ''}
-    </div>`);
-  }
+  const visibleDates = [];
+  for (let i = 0; i < firstDay; i++) visibleDates.push(addDays(start, i - firstDay));
+  for (let day = 1; day <= daysInMonth; day++) visibleDates.push(new Date(year, month, day));
   const total = firstDay + daysInMonth;
   const trailing = (7 - (total % 7)) % 7;
-  for (let i = 0; i < trailing; i++) cells.push('<div class="day mutedday"></div>');
+  for (let i = 1; i <= trailing; i++) visibleDates.push(addDays(end, i));
+  const weeks = [];
+  for (let i = 0; i < visibleDates.length; i += 7) weeks.push(visibleDates.slice(i, i + 7));
+  const cells = weeks.flatMap((week) => {
+    const lanes = calendarMonthLanes(week);
+    return week.map((date) => {
+      const iso = toIsoDate(date);
+      const inMonth = date.getMonth() === month;
+      const dayTasks = calendarTasksForDate(iso);
+      return `<div class="day ${inMonth ? '' : 'mutedday'} ${toIsoDate(new Date()) === iso ? 'today' : ''}">
+        <div class="num">${date.getDate()}</div>
+        <div class="calendar-day-stack">${lanes.map((task) => calendarMonthSegment(task, iso, toIsoDate(week[0]), toIsoDate(week[6]))).join('')}</div>
+        ${dayTasks.length > lanes.length ? `<span class="calendar-more">+${dayTasks.length - lanes.length}</span>` : ''}
+      </div>`;
+    });
+  });
   els.calendarGrid.innerHTML = names + cells.join('');
   bindCalendarTaskLinks();
+}
+
+function calendarMonthLanes(week) {
+  const weekStart = toIsoDate(week[0]);
+  const weekEnd = toIsoDate(week[6]);
+  return getCalendarTasks()
+    .filter((task) => task.start <= weekEnd && task.end >= weekStart)
+    .sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || String(a.start).localeCompare(String(b.start)) || String(a.title).localeCompare(String(b.title), 'de'))
+    .slice(0, 4);
+}
+
+function calendarMonthSegment(task, iso, weekStart, weekEnd) {
+  if (iso < task.start || iso > task.end) return '<span class="calendar-lane-placeholder" aria-hidden="true"></span>';
+  const startsToday = iso === task.start || iso === weekStart;
+  const endsToday = iso === task.end || iso === weekEnd;
+  const isSingle = startsToday && endsToday;
+  const label = startsToday ? escapeHtml(task.title) : '&nbsp;';
+  const classes = [
+    'cal-task',
+    'calendar-range-segment',
+    `priority-${task.priority || 'mittel'}`,
+    isSingle ? 'range-single' : startsToday ? 'range-start' : endsToday ? 'range-end' : 'range-middle'
+  ].join(' ');
+  return `<button class="${classes}" type="button" data-task-id="${escapeHtml(task.id)}" data-task-title="${escapeAttribute(task.title)}" style="--cal-color:${colorForCategory(task.category)}">${label}</button>`;
 }
 
 function renderCalendarWeek() {
@@ -653,10 +678,16 @@ function parseTaskRangeFromText(value) {
   const startMatch = text.match(/(?:Von|Start):\s*(\d{4}-\d{2}-\d{2})/i);
   const endMatch = text.match(/(?:Bis|Ende):\s*(\d{4}-\d{2}-\d{2})/i);
   const rangeMatch = text.match(/Zeitraum:\s*(\d{4}-\d{2}-\d{2})\s*(?:bis|-|–)\s*(\d{4}-\d{2}-\d{2})/i);
+  const germanRangeMatch = text.match(/Zeitraum:\s*(\d{2})\.(\d{2})\.(\d{4})\s*(?:bis|-|–)\s*(\d{2})\.(\d{2})\.(\d{4})/i);
   return {
-    start: rangeMatch?.[1] || startMatch?.[1] || '',
-    end: rangeMatch?.[2] || endMatch?.[1] || ''
+    start: rangeMatch?.[1] || formatGermanDateMatch(germanRangeMatch, 1) || startMatch?.[1] || '',
+    end: rangeMatch?.[2] || formatGermanDateMatch(germanRangeMatch, 4) || endMatch?.[1] || ''
   };
+}
+
+function formatGermanDateMatch(match, offset) {
+  if (!match) return '';
+  return `${match[offset + 2]}-${match[offset + 1]}-${match[offset]}`;
 }
 
 function calendarTaskPill(task) {
@@ -1012,4 +1043,5 @@ function escapeHtml(value) {
   return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'", '&#39;');
 }
 function escapeAttribute(value) { return escapeHtml(value); }
+
 
