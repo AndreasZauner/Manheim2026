@@ -6,7 +6,7 @@
   <title>Lehrgrabung Kerpen-Manheim 2026 &ndash; Online-Planer</title>
   <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link rel="stylesheet" href="./styles.css" />
-  <link rel="stylesheet" href="./styles-fix.css?v=sidebar-collapse-20260506-1" />
+  <link rel="stylesheet" href="./styles-fix.css?v=calendar-visibility-20260512-1" />
   <script src="./config.js?v=calendar-nav-fix-20260511-1"></script>
   <script>
     (function markPersonalShareRoute() {
@@ -305,7 +305,7 @@
     if (window.__manheimShareRoute === 'personal') {
       importManheimModule('./personal-share-view.js?v=personal-share-direct-20260509-1', 'Personal-Share-Ansicht');
     } else {
-      importManheimModule('./app.js', 'Haupt-App');
+      importManheimModule('./app.js?v=calendar-visibility-20260512-1', 'Haupt-App');
       importManheimModule('./open-points-module.js?v=open-points-20260503-1', 'Arbeitsliste');
       importManheimModule('./map-module.js?v=ui-polish-20260503-1', 'Kartenmodul');
       importManheimModule('./phase3-field-doku-module.js?v=calendar-nav-fix-20260511-1', 'Feld-und-Doku-Modul');
@@ -314,6 +314,7 @@
   </script>
 </body>
 </html>
+
 
 
 
