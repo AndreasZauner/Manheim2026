@@ -448,6 +448,7 @@ input[type="password"] {
   border-radius: 12px;
   background: rgba(255,255,255,.94);
   padding: 9px;
+  overflow: visible;
 }
 
 .day.today,
@@ -481,11 +482,12 @@ input[type="password"] {
   border-left: 5px solid var(--cal-color);
   border-radius: 9px;
   background: #fff;
-  color: #08233d;
+  color: #08233d !important;
   cursor: pointer;
   font: inherit;
   font-weight: 850;
   text-align: left;
+  box-shadow: 0 3px 8px rgba(8, 35, 61, .06);
 }
 
 .cal-task {
@@ -495,6 +497,61 @@ input[type="password"] {
   line-height: 1.25;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.calendar-range-segment {
+  position: relative;
+  z-index: 1;
+  min-height: 27px;
+  border: 0;
+  border-left: 0;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--cal-color) 20%, #ffffff), color-mix(in srgb, var(--cal-color) 11%, #ffffff));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cal-color) 34%, #d6e2ef), 0 2px 6px rgba(8, 35, 61, .06);
+}
+
+.calendar-range-segment::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 5px;
+  background: var(--cal-color);
+  border-radius: inherit;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.calendar-range-segment.range-start {
+  width: calc(100% + 10px);
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.calendar-range-segment.range-middle {
+  width: calc(100% + 18px);
+  margin-left: -9px;
+  border-radius: 0;
+}
+
+.calendar-range-segment.range-middle::before,
+.calendar-range-segment.range-end::before {
+  display: none;
+}
+
+.calendar-range-segment.range-end {
+  width: calc(100% + 10px);
+  margin-left: -9px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+.calendar-range-segment.range-single {
+  width: 100%;
+}
+
+.calendar-lane-placeholder {
+  display: block;
+  min-height: 27px;
 }
 
 .calendar-task-card {
@@ -514,11 +571,13 @@ input[type="password"] {
 .cal-task.priority-hoch,
 .calendar-task-card.priority-hoch {
   background: #fff5f3;
+  color: #08233d !important;
 }
 
 .cal-task.priority-niedrig,
 .calendar-task-card.priority-niedrig {
   background: #f7fcf8;
+  color: #08233d !important;
 }
 
 .calendar-more,
@@ -763,4 +822,5 @@ input[type="password"] {
     grid-template-columns: 1fr;
   }
 }
+
 
