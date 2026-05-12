@@ -146,14 +146,24 @@ async function loadParticipants() {
 function ensureChartHost() {
   const participantsTab = document.getElementById('participantsTab');
   const planningTabs = document.getElementById('participantPlanningTabs');
-  if (!participantsTab || !planningTabs) return null;
+  const sectionHead = participantsTab?.querySelector('.section-head');
+  const deploymentView = document.getElementById('personnelDeploymentView');
+  if (!participantsTab || (!planningTabs && !sectionHead && !deploymentView)) return null;
 
   let slot = document.getElementById('personnelAttendanceChartSlot');
   if (!slot) {
     slot = document.createElement('div');
     slot.id = 'personnelAttendanceChartSlot';
     slot.className = 'personnel-attendance-chart-slot';
-    planningTabs.insertAdjacentElement('afterend', slot);
+    if (planningTabs) {
+      planningTabs.insertAdjacentElement('afterend', slot);
+    } else if (sectionHead) {
+      sectionHead.insertAdjacentElement('afterend', slot);
+    } else {
+      participantsTab.insertAdjacentElement('afterbegin', slot);
+    }
+  } else if (deploymentView && (slot.parentElement !== participantsTab || slot.nextElementSibling !== deploymentView)) {
+    participantsTab.insertBefore(slot, deploymentView);
   }
 
   let host = document.getElementById('personnelAttendanceChart');
@@ -321,7 +331,7 @@ function crossesThreshold(start, end, threshold) {
 }
 
 function lineColorClass(value) {
-  if (value <= CRITICAL_ATTENDANCE) return 'line-critical';
+  if (value < CRITICAL_ATTENDANCE) return 'line-critical';
   if (value >= TARGET_ATTENDANCE) return 'line-target';
   return 'line-normal';
 }

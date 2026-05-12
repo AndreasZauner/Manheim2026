@@ -9,7 +9,7 @@ async function installParticipantBootstrap() {
   window.__participantBootstrapInstalled = true;
   import('./auth-login-stabilizer.js?v=login-stabil-20260508-1')
     .catch(error => console.error('Login-Stabilisierung konnte nicht geladen werden', error));
-  import('./personal-share-view.js?v=external-helpers-20260512-1')
+  import('./personal-share-view.js?v=personal-chart-anchor-20260512-1')
     .catch(error => console.error('Personal-Freigabe konnte nicht geladen werden', error));
   waitForAppShell().then(loadAppModules);
 }
@@ -55,7 +55,7 @@ async function loadAppModules() {
       .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
   );
   imports.push(
-    import('./personnel-attendance-chart-module.js?v=external-helpers-20260512-1')
+    import('./personnel-attendance-chart-module.js?v=personal-chart-anchor-20260512-1')
       .catch(error => console.error('Anwesenheitsdiagramm konnte nicht geladen werden', error))
       .finally(() => import('./personnel-chart-placement-fix.js?v=chart-anchor-20260505-5')
         .catch(error => console.error('Diagrammplatzierung konnte nicht stabilisiert werden', error)))
@@ -84,5 +84,3 @@ async function loadAppModules() {
   );
   await Promise.allSettled(imports);
 }
-
-
