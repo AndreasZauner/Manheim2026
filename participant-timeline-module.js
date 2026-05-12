@@ -9,7 +9,7 @@ async function installParticipantBootstrap() {
   window.__participantBootstrapInstalled = true;
   import('./auth-login-stabilizer.js?v=login-stabil-20260508-1')
     .catch(error => console.error('Login-Stabilisierung konnte nicht geladen werden', error));
-  import('./personal-share-view.js?v=personal-share-20260508-1')
+  import('./personal-share-view.js?v=external-helpers-20260512-1')
     .catch(error => console.error('Personal-Freigabe konnte nicht geladen werden', error));
   waitForAppShell().then(loadAppModules);
 }
@@ -46,7 +46,7 @@ async function loadAppModules() {
   );
   if (!window.__participantPlanningInstalled) {
     imports.push(
-      import('./participant-planning-module.js?v=authlock-20260501-1')
+      import('./participant-planning-module.js?v=external-helpers-20260512-1')
         .catch(error => console.error('Teilnehmerplanung konnte nicht geladen werden', error))
     );
   }
@@ -55,7 +55,7 @@ async function loadAppModules() {
       .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
   );
   imports.push(
-    import('./personnel-attendance-chart-module.js?v=attendance-chart-20260504-1')
+    import('./personnel-attendance-chart-module.js?v=external-helpers-20260512-1')
       .catch(error => console.error('Anwesenheitsdiagramm konnte nicht geladen werden', error))
       .finally(() => import('./personnel-chart-placement-fix.js?v=chart-anchor-20260505-5')
         .catch(error => console.error('Diagrammplatzierung konnte nicht stabilisiert werden', error)))
@@ -71,7 +71,7 @@ async function loadAppModules() {
       .catch(error => console.error('Ideenlabor konnte nicht geladen werden', error))
   );
   imports.push(
-    import('./dashboard-command-module.js?v=weather-v2-20260505-1')
+    import('./dashboard-command-module.js?v=external-helpers-20260512-1')
       .then(() => import('./dashboard-command-module-fix.js?v=leitstand-fix-20260505-1')
         .catch(error => console.error('Leitstand-Diagrammfix konnte nicht geladen werden', error)))
       .then(() => import('./dashboard-leitstand-layout-fix.js?v=leitstand-layout-20260506-1')
@@ -84,4 +84,5 @@ async function loadAppModules() {
   );
   await Promise.allSettled(imports);
 }
+
 

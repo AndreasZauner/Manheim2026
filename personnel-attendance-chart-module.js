@@ -112,7 +112,7 @@ async function loadParticipants() {
     }
     const { data, error } = await state.client
       .from('participants')
-      .select('id,full_name,availability_from,availability_to,status')
+      .select('*')
       .order('availability_from', { ascending: true, nullsFirst: false })
       .order('full_name');
     if (error) throw error;
@@ -144,9 +144,17 @@ async function loadParticipants() {
 }
 
 function ensureChartHost() {
-  const topbar = document.querySelector('.topbar');
-  const sync = document.querySelector('.topbar-right');
-  if (!topbar || !sync) return null;
+  const participantsTab = document.getElementById('participantsTab');
+  const planningTabs = document.getElementById('participantPlanningTabs');
+  if (!participantsTab || !planningTabs) return null;
+
+  let slot = document.getElementById('personnelAttendanceChartSlot');
+  if (!slot) {
+    slot = document.createElement('div');
+    slot.id = 'personnelAttendanceChartSlot';
+    slot.className = 'personnel-attendance-chart-slot';
+    planningTabs.insertAdjacentElement('afterend', slot);
+  }
 
   let host = document.getElementById('personnelAttendanceChart');
   if (!host) {
@@ -156,7 +164,7 @@ function ensureChartHost() {
     host.setAttribute('aria-label', 'Diagramm zur täglichen Anwesenheit des Personals');
   }
 
-  if (host.parentElement !== topbar || host.nextElementSibling !== sync) topbar.insertBefore(host, sync);
+  if (host.parentElement !== slot) slot.appendChild(host);
   return host;
 }
 
@@ -180,11 +188,13 @@ function buildDailySeries(participants) {
   const days = eachProjectDay();
   const counted = participants.filter(person => slotsFor(person).length && isCountedStatus(person.status));
   return days.map(day => {
-    const count = counted.filter(person => {
+    const planned = counted.filter(person => {
       const isPlanned = slotsFor(person).some(slot => isWithinRange(day.date, slot.availability_from, slot.availability_to));
       return isPlanned && !hasAbsenceOnDay(person.id, day.date);
-    }).length;
-    return { ...day, count };
+    });
+    const count = planned.filter(person => personType(person) !== 'external').length;
+    const externalCount = planned.filter(person => personType(person) === 'external').length;
+    return { ...day, count, externalCount, totalCount: count + externalCount };
   });
 }
 
@@ -213,6 +223,7 @@ function renderChartCard(daily) {
       <div class="kpis" aria-label="Kennzahlen">
         <span><strong>${stats.avg}</strong> Ø</span>
         <span><strong>${stats.max}</strong> Max</span>
+        <span><strong>${stats.maxTotal}</strong> inkl. extern</span>
         <span><strong>${stats.criticalDays}</strong> kritisch</span>
       </div>
     </div>
@@ -228,7 +239,7 @@ function renderSvg(daily) {
   const margin = { top: 18, right: 24, bottom: 28, left: 34 };
   const chartW = width - margin.left - margin.right;
   const chartH = height - margin.top - margin.bottom;
-  const maxY = Math.max(MAX_Y, Math.ceil(Math.max(...daily.map(day => day.count), TARGET_ATTENDANCE) / 3) * 3);
+  const maxY = Math.max(MAX_Y, Math.ceil(Math.max(...daily.map(day => Math.max(day.count, day.totalCount || day.count)), TARGET_ATTENDANCE) / 3) * 3);
   const minY = 0;
   const x = index => margin.left + (index / Math.max(daily.length - 1, 1)) * chartW;
   const y = value => margin.top + chartH - ((value - minY) / (maxY - minY)) * chartH;
@@ -236,6 +247,7 @@ function renderSvg(daily) {
   const criticalTop = y(CRITICAL_ATTENDANCE);
   const dateStep = daily.length > 55 ? 14 : daily.length > 28 ? 7 : 4;
   const lineSegments = buildColoredLineSegments(daily, x, y);
+  const totalPath = buildLinePath(daily, x, y, 'totalCount');
 
   return `
     <svg class="attendance-chart" viewBox="0 0 ${width} ${height}" role="img" aria-labelledby="attendanceChartTitle attendanceChartDesc">
@@ -249,7 +261,12 @@ function renderSvg(daily) {
       <line x1="${margin.left}" x2="${width - margin.right}" y1="${y(CRITICAL_ATTENDANCE).toFixed(1)}" y2="${y(CRITICAL_ATTENDANCE).toFixed(1)}" class="critical-boundary"></line>
       <line x1="${margin.left}" x2="${width - margin.right}" y1="${y(TARGET_ATTENDANCE).toFixed(1)}" y2="${y(TARGET_ATTENDANCE).toFixed(1)}" class="target-line"></line>
       <text x="${width - margin.right}" y="${(y(TARGET_ATTENDANCE) - 5).toFixed(1)}" text-anchor="end" class="target-text">Ziel 10</text>
+      ${totalPath ? `<path d="${totalPath}" class="attendance-line line-total"></path>` : ''}
       ${lineSegments.map(segment => `<path d="${segment.path}" class="attendance-line ${segment.color}"></path>`).join('')}
+      <g class="attendance-legend" transform="translate(${margin.left}, ${margin.top - 5})">
+        <line x1="0" x2="18" y1="0" y2="0" class="legend-line regular"></line><text x="24" y="3">regulär</text>
+        <line x1="78" x2="96" y1="0" y2="0" class="legend-line total"></line><text x="102" y="3">inkl. extern</text>
+      </g>
       ${daily.map((day, index) => renderDateTick(day, index, daily.length, x, height, margin, dateStep)).join('')}
     </svg>
   `;
@@ -289,6 +306,12 @@ function buildColoredLineSegments(daily, x, y) {
   return segments;
 }
 
+function buildLinePath(daily, x, y, key = 'count') {
+  return daily
+    .map((day, index) => `${index === 0 ? 'M' : 'L'} ${x(index).toFixed(1)} ${y(day[key] ?? day.count).toFixed(1)}`)
+    .join(' ');
+}
+
 function pointForDay(day, index, x, y) {
   return { x: x(index), y: y(day.count), count: day.count, ratio: 0 };
 }
@@ -310,10 +333,12 @@ function renderDateTick(day, index, totalDays, x, height, margin, step) {
 
 function calculateStats(daily) {
   const counts = daily.map(day => day.count);
+  const totalCounts = daily.map(day => day.totalCount || day.count);
   const max = Math.max(...counts, 0);
+  const maxTotal = Math.max(...totalCounts, 0);
   const avg = counts.length ? (counts.reduce((sum, value) => sum + value, 0) / counts.length).toFixed(1).replace('.', ',') : '0';
   const criticalDays = counts.filter(value => value <= CRITICAL_ATTENDANCE).length;
-  return { max, avg, criticalDays };
+  return { max, maxTotal, avg, criticalDays };
 }
 
 function buildTicks(maxY) {
@@ -342,6 +367,10 @@ function renderEmpty(message) {
 function isCountedStatus(status) {
   const normalized = normalizeStatus(status);
   return normalized === 'gesetzt' || normalized === 'zugesagt' || normalized === 'zu_klaeren';
+}
+
+function personType(person) {
+  return String(person?.person_type || 'student') === 'external' ? 'external' : 'student';
 }
 
 function normalizeStatus(status) {
@@ -423,29 +452,17 @@ function injectStyles() {
   const style = document.createElement('style');
   style.id = 'personnelAttendanceChartStyles';
   style.textContent = `
-    .topbar {
-      gap: 16px;
+    .personnel-attendance-chart-slot {
+      display: flex;
+      justify-content: flex-end;
       align-items: flex-start;
-      position: relative;
-      min-height: 0;
-      margin-bottom: 8px;
-    }
-    .topbar > div:first-child {
-      flex: 0 0 420px;
-      min-width: 380px;
-    }
-    .topbar > div:first-child p {
-      margin-top: 4px;
-      line-height: 1.25;
-      white-space: nowrap;
+      width: 100%;
+      margin: 8px 0 18px;
     }
     .personnel-attendance-chart.chart-card {
-      position: absolute;
-      top: 0;
-      right: 142px;
-      flex: 0 0 clamp(540px, 39vw, 650px);
-      max-width: clamp(540px, 39vw, 650px);
-      min-width: 520px;
+      position: relative;
+      width: clamp(520px, 42vw, 650px);
+      max-width: 100%;
       margin: 0;
       background: #fffaf2;
       border: 1px solid #e1d6c7;
@@ -540,6 +557,28 @@ function injectStyles() {
       stroke: #dc2626;
       filter: drop-shadow(0 5px 7px rgba(220, 38, 38, 0.14));
     }
+    .personnel-attendance-chart .attendance-line.line-total {
+      stroke: #eab308;
+      stroke-width: 2.8;
+      stroke-dasharray: 6 4;
+      filter: drop-shadow(0 5px 7px rgba(234, 179, 8, 0.18));
+    }
+    .personnel-attendance-chart .attendance-legend text {
+      fill: #766b5d;
+      font-size: 9px;
+      font-weight: 800;
+    }
+    .personnel-attendance-chart .legend-line {
+      stroke-width: 3;
+      stroke-linecap: round;
+    }
+    .personnel-attendance-chart .legend-line.regular {
+      stroke: #2563eb;
+    }
+    .personnel-attendance-chart .legend-line.total {
+      stroke: #eab308;
+      stroke-dasharray: 5 3;
+    }
     .personnel-attendance-chart .target-line {
       stroke: #16a34a;
       stroke-width: 2;
@@ -578,27 +617,12 @@ function injectStyles() {
       100% { background-position: 220% 50%; }
     }
     @media (max-width: 1180px) {
-      .topbar {
-        flex-wrap: wrap;
-        min-height: 0;
-      }
-      .topbar > div:first-child {
-        min-width: 0;
-        flex-basis: auto;
-      }
-      .topbar > div:first-child p {
-        white-space: normal;
+      .personnel-attendance-chart-slot {
+        justify-content: stretch;
       }
       .personnel-attendance-chart.chart-card {
-        position: static;
-        order: 3;
-        flex-basis: 100%;
+        width: 100%;
         max-width: none;
-        min-width: 0;
-        margin: 4px 0 0;
-      }
-      .topbar-right {
-        margin-left: auto;
       }
     }
     @media (max-width: 760px) {

@@ -64,11 +64,31 @@ create table if not exists public.participants (
     check (status in ('gesetzt','zugesagt','zu_klären','anzufragen')),
   availability_note text,
   source_note text,
+  person_type text not null default 'student'
+    check (person_type in ('student', 'external')),
+  external_source text,
   created_by uuid references auth.users(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   constraint participants_full_name_unique unique (full_name)
 );
+
+alter table public.participants
+  add column if not exists person_type text not null default 'student';
+alter table public.participants
+  add column if not exists external_source text;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conname = 'participants_person_type_check'
+      and conrelid = 'public.participants'::regclass
+  ) then
+    alter table public.participants
+      add constraint participants_person_type_check
+      check (person_type in ('student', 'external'));
+  end if;
+end $$;
 
 create table if not exists public.participant_private (
   participant_id bigint primary key references public.participants(id) on delete cascade,
@@ -316,3 +336,4 @@ grant select, insert, update on public.participants to authenticated;
 grant select, insert, update on public.participant_private to authenticated;
 grant select, insert, update, delete on public.participant_availability_slots to authenticated;
 grant usage, select on all sequences in schema public to authenticated;
+
