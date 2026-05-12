@@ -233,6 +233,7 @@ function renderChart(series) {
       <line class="legend-line total" x1="78" x2="96" y1="0" y2="0"></line><text x="102" y="3">inkl. extern</text>
     </g>
     ${series.map((day, index) => renderDateTick(day, index, series.length, x, height, margin, dateStep)).join('')}
+    ${renderHoverTargets(series, x, y, width, height, margin, chartW)}
   </svg>`;
 }
 
@@ -270,6 +271,30 @@ function buildColoredLineSegments(series, x, y) {
   return segments;
 }
 
+function renderHoverTargets(series, x, y, width, height, margin, chartW) {
+  const hitWidth = Math.max(8, chartW / Math.max(series.length, 1));
+  const chartBottom = height - margin.bottom;
+  return `<g class="attendance-hover-layer">${series.map((day, index) => {
+    const value = day.totalCount ?? day.count;
+    const cx = x(index);
+    const cy = y(value);
+    const labelX = clamp(cx, margin.left + 15, width - margin.right - 15);
+    const labelY = Math.max(margin.top + 20, cy - 9);
+    const hitX = clamp(cx - hitWidth / 2, margin.left, width - margin.right - hitWidth);
+    const label = formatAxisDate(day.date || day);
+    return `<g class="attendance-hover-day" tabindex="0" role="listitem" aria-label="${label}: ${value} Personen insgesamt">
+      <title>${label}: ${value} Personen insgesamt</title>
+      <rect class="attendance-hover-hit" x="${hitX.toFixed(1)}" y="${margin.top}" width="${hitWidth.toFixed(1)}" height="${chartBottom - margin.top}"></rect>
+      <line class="attendance-hover-guide" x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${margin.top}" y2="${chartBottom}"></line>
+      <circle class="attendance-hover-dot" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.6"></circle>
+      <g class="attendance-hover-label" transform="translate(${labelX.toFixed(1)} ${labelY.toFixed(1)})">
+        <rect x="-15" y="-20" width="30" height="18" rx="8"></rect>
+        <text x="0" y="-7" text-anchor="middle">${value}</text>
+      </g>
+    </g>`;
+  }).join('')}</g>`;
+}
+
 function buildLinePath(series, x, y, key = 'count') {
   return series.map((day, index) => `${index === 0 ? 'M' : 'L'} ${x(index).toFixed(1)} ${y(day[key] ?? day.count).toFixed(1)}`).join(' ');
 }
@@ -296,6 +321,10 @@ function renderDateTick(day, index, totalDays, x, height, margin, step) {
 function formatAxisDate(value) {
   const date = value instanceof Date ? value : new Date(value);
   return date.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' });
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function buildChartTicks(maxY) {
@@ -417,7 +446,7 @@ function installStyles() {
     .leitstand-command-copy{padding:12px 0}.leitstand-command-copy span,.module-head span{color:#64758a;font-size:.72rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase}.leitstand-command-copy h3{margin:4px 0 6px;font-size:1.15rem}.leitstand-command-copy p{margin:0;color:var(--muted);line-height:1.35}
     .leitstand-command-modules{display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:12px}.leitstand-module{min-width:0;border:1px solid #d8e3ee;border-radius:12px;background:rgba(255,255,255,.9);box-shadow:0 12px 26px rgba(27,48,70,.08);padding:12px}.personnel-module{background:#fffaf2;border-color:#e3d5c3}
     .module-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}.module-head strong{display:block;color:var(--text);font-size:.95rem}.module-actions,.mini-kpis,.radar-tags{display:flex;gap:6px;flex-wrap:wrap;align-items:center}.mini-btn{border:1px solid #d8e3ee;background:#fff;color:var(--text);border-radius:999px;padding:4px 9px;font-size:.72rem;font-weight:800;cursor:pointer}.mini-btn.active{background:#1f78d8;border-color:#1f78d8;color:#fff}.mini-kpis span,.radar-tags span{border:1px solid #e1e8f0;border-radius:999px;padding:3px 7px;background:rgba(255,255,255,.72);color:#64758a;font-size:.7rem;font-weight:700}.mini-kpis b{color:#2f2a24}
-    .leitstand-chart{height:172px;border-radius:10px;background:#fffdf8;border:1px solid rgba(47,42,36,.08);overflow:hidden}.leitstand-command-header.is-compact .leitstand-chart{height:150px}.leitstand-chart svg{width:100%;height:100%;display:block}.leitstand-chart .grid-line{stroke:rgba(47,42,36,.12);stroke-width:1}.leitstand-chart .tick-label{fill:#766b5d;font-size:10px}.leitstand-chart .critical-band{fill:rgba(220,38,38,.16)}.leitstand-chart .critical-boundary{stroke:rgba(220,38,38,.45);stroke-width:1.2;stroke-dasharray:5 5}.leitstand-chart .target-line{stroke:#16a34a;stroke-width:2;stroke-dasharray:7 6;stroke-linecap:round}.leitstand-chart .target-text{fill:#166534;font-size:10px;font-weight:800}.leitstand-chart .attendance-line{fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 5px 7px rgba(37,99,235,.18))}.leitstand-chart .attendance-line.line-normal{stroke:#2563eb}.leitstand-chart .attendance-line.line-target{stroke:#16a34a;filter:drop-shadow(0 5px 7px rgba(22,163,74,.16))}.leitstand-chart .attendance-line.line-critical{stroke:#dc2626;filter:drop-shadow(0 5px 7px rgba(220,38,38,.14))}.leitstand-chart .attendance-line.line-total{stroke:#eab308;stroke-width:2.8;stroke-dasharray:6 4;filter:drop-shadow(0 5px 7px rgba(234,179,8,.18))}.leitstand-chart .attendance-legend text{fill:#766b5d;font-size:9px;font-weight:800}.leitstand-chart .legend-line{stroke-width:3;stroke-linecap:round}.leitstand-chart .legend-line.regular{stroke:#2563eb}.leitstand-chart .legend-line.total{stroke:#eab308;stroke-dasharray:5 3}
+    .leitstand-chart{height:172px;border-radius:10px;background:#fffdf8;border:1px solid rgba(47,42,36,.08);overflow:hidden}.leitstand-command-header.is-compact .leitstand-chart{height:150px}.leitstand-chart svg{width:100%;height:100%;display:block}.leitstand-chart .grid-line{stroke:rgba(47,42,36,.12);stroke-width:1}.leitstand-chart .tick-label{fill:#766b5d;font-size:10px}.leitstand-chart .critical-band{fill:rgba(220,38,38,.16)}.leitstand-chart .critical-boundary{stroke:rgba(220,38,38,.45);stroke-width:1.2;stroke-dasharray:5 5}.leitstand-chart .target-line{stroke:#16a34a;stroke-width:2;stroke-dasharray:7 6;stroke-linecap:round}.leitstand-chart .target-text{fill:#166534;font-size:10px;font-weight:800}.leitstand-chart .attendance-line{fill:none;stroke-width:3.2;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 5px 7px rgba(37,99,235,.18))}.leitstand-chart .attendance-line.line-normal{stroke:#2563eb}.leitstand-chart .attendance-line.line-target{stroke:#16a34a;filter:drop-shadow(0 5px 7px rgba(22,163,74,.16))}.leitstand-chart .attendance-line.line-critical{stroke:#dc2626;filter:drop-shadow(0 5px 7px rgba(220,38,38,.14))}.leitstand-chart .attendance-line.line-total{stroke:#eab308;stroke-width:2.8;stroke-dasharray:6 4;filter:drop-shadow(0 5px 7px rgba(234,179,8,.18))}.leitstand-chart .attendance-hover-hit{fill:transparent;cursor:crosshair;pointer-events:all}.leitstand-chart .attendance-hover-guide{stroke:rgba(11,37,64,.24);stroke-width:1;stroke-dasharray:3 4;opacity:0;pointer-events:none}.leitstand-chart .attendance-hover-dot{fill:#0b2540;stroke:#fff;stroke-width:2;opacity:0;pointer-events:none}.leitstand-chart .attendance-hover-label{opacity:0;pointer-events:none}.leitstand-chart .attendance-hover-label rect{fill:#0b2540;stroke:rgba(255,255,255,.86);stroke-width:1;filter:drop-shadow(0 5px 10px rgba(11,37,64,.22))}.leitstand-chart .attendance-hover-label text{fill:#fff;font-size:11px;font-weight:900}.leitstand-chart .attendance-hover-day:hover .attendance-hover-guide,.leitstand-chart .attendance-hover-day:hover .attendance-hover-dot,.leitstand-chart .attendance-hover-day:hover .attendance-hover-label,.leitstand-chart .attendance-hover-day:focus .attendance-hover-guide,.leitstand-chart .attendance-hover-day:focus .attendance-hover-dot,.leitstand-chart .attendance-hover-day:focus .attendance-hover-label{opacity:1}.leitstand-chart .attendance-legend text{fill:#766b5d;font-size:9px;font-weight:800}.leitstand-chart .legend-line{stroke-width:3;stroke-linecap:round}.leitstand-chart .legend-line.regular{stroke:#2563eb}.leitstand-chart .legend-line.total{stroke:#eab308;stroke-dasharray:5 3}
     .weather-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}.weather-day{display:grid;gap:3px;border:1px solid #e1e8f0;border-radius:8px;padding:7px;background:#f8fbff;min-width:0}.weather-day strong,.weather-day span,.weather-day small{white-space:nowrap}.weather-day strong,.weather-day small,.weather-source,.weather-empty{font-size:.72rem}.weather-day span{font-weight:800}.weather-day small,.weather-source,.weather-empty{color:var(--muted)}.weather-source{margin:8px 0 0}.weather-radar{position:relative;height:142px;border-radius:10px;overflow:hidden;background:linear-gradient(135deg,#eef5fb,#dce8f3);border:1px solid #d8e3ee}.weather-radar.is-open{height:230px}.weather-radar img{width:100%;height:100%;object-fit:cover;opacity:.86}.radar-pin{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#0f2740;color:#fff;border-radius:999px;padding:4px 8px;font-size:.72rem;font-weight:800;box-shadow:0 6px 16px rgba(15,39,64,.22)}
     .dashboard-grid{grid-template-columns:minmax(0,1.2fr) minmax(320px,.8fr);align-items:start}.dashboard-grid .panel:first-child{grid-row:span 2}
     @media (max-width:1280px){.leitstand-command-header{grid-template-columns:1fr}.leitstand-command-copy{padding-bottom:0}}@media (max-width:980px){.leitstand-command-modules,#dashboardTab .leitstand-kpi-strip,.weather-days{grid-template-columns:repeat(2,minmax(0,1fr))}}
