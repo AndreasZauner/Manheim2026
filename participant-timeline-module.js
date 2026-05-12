@@ -71,7 +71,7 @@ async function loadAppModules() {
       .catch(error => console.error('Ideenlabor konnte nicht geladen werden', error))
   );
   imports.push(
-    import('./dashboard-command-module.js?v=external-helpers-20260512-1')
+    import('./dashboard-command-module.js?v=leitstand-personnel-chart-20260512-1')
       .then(() => import('./dashboard-command-module-fix.js?v=leitstand-fix-20260505-1')
         .catch(error => console.error('Leitstand-Diagrammfix konnte nicht geladen werden', error)))
       .then(() => import('./dashboard-leitstand-layout-fix.js?v=leitstand-layout-20260506-1')
