@@ -127,7 +127,7 @@ function wait(ms) {
     if (document.querySelector('script[src^="./participant-timeline-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './participant-timeline-module.js?v=calendar-nav-fix-20260511-1';
+    script.src = './participant-timeline-module.js?v=chart-hover-20260512-1';
     document.head.appendChild(script);
   }
 

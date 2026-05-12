@@ -278,6 +278,7 @@ function renderSvg(daily) {
         <line x1="78" x2="96" y1="0" y2="0" class="legend-line total"></line><text x="102" y="3">inkl. extern</text>
       </g>
       ${daily.map((day, index) => renderDateTick(day, index, daily.length, x, height, margin, dateStep)).join('')}
+      ${renderHoverTargets(daily, x, y, width, height, margin, chartW)}
     </svg>
   `;
 }
@@ -314,6 +315,29 @@ function buildColoredLineSegments(daily, x, y) {
       });
   }
   return segments;
+}
+
+function renderHoverTargets(daily, x, y, width, height, margin, chartW) {
+  const hitWidth = Math.max(8, chartW / Math.max(daily.length, 1));
+  const chartBottom = height - margin.bottom;
+  return `<g class="attendance-hover-layer">${daily.map((day, index) => {
+    const value = day.totalCount ?? day.count;
+    const cx = x(index);
+    const cy = y(value);
+    const labelX = clamp(cx, margin.left + 15, width - margin.right - 15);
+    const labelY = Math.max(margin.top + 20, cy - 9);
+    const hitX = clamp(cx - hitWidth / 2, margin.left, width - margin.right - hitWidth);
+    return `<g class="attendance-hover-day" tabindex="0" role="listitem" aria-label="${escapeHtml(day.label)}: ${value} Personen insgesamt">
+      <title>${escapeHtml(day.label)}: ${value} Personen insgesamt</title>
+      <rect class="attendance-hover-hit" x="${hitX.toFixed(1)}" y="${margin.top}" width="${hitWidth.toFixed(1)}" height="${chartBottom - margin.top}"></rect>
+      <line class="attendance-hover-guide" x1="${cx.toFixed(1)}" x2="${cx.toFixed(1)}" y1="${margin.top}" y2="${chartBottom}"></line>
+      <circle class="attendance-hover-dot" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="3.6"></circle>
+      <g class="attendance-hover-label" transform="translate(${labelX.toFixed(1)} ${labelY.toFixed(1)})">
+        <rect x="-15" y="-20" width="30" height="18" rx="8"></rect>
+        <text x="0" y="-7" text-anchor="middle">${value}</text>
+      </g>
+    </g>`;
+  }).join('')}</g>`;
 }
 
 function buildLinePath(daily, x, y, key = 'count') {
@@ -442,6 +466,10 @@ function compareDates(a, b) {
   if (!a) return 1;
   if (!b) return -1;
   return parseDate(a) - parseDate(b);
+}
+
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
 }
 
 function getAuthSession() {
@@ -607,6 +635,48 @@ function injectStyles() {
       fill: #166534;
       font-size: 10px;
       font-weight: 800;
+    }
+    .personnel-attendance-chart .attendance-hover-hit {
+      fill: transparent;
+      cursor: crosshair;
+      pointer-events: all;
+    }
+    .personnel-attendance-chart .attendance-hover-guide {
+      stroke: rgba(11, 37, 64, 0.24);
+      stroke-width: 1;
+      stroke-dasharray: 3 4;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .personnel-attendance-chart .attendance-hover-dot {
+      fill: #0b2540;
+      stroke: #fff;
+      stroke-width: 2;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .personnel-attendance-chart .attendance-hover-label {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .personnel-attendance-chart .attendance-hover-label rect {
+      fill: #0b2540;
+      stroke: rgba(255, 255, 255, 0.86);
+      stroke-width: 1;
+      filter: drop-shadow(0 5px 10px rgba(11, 37, 64, 0.22));
+    }
+    .personnel-attendance-chart .attendance-hover-label text {
+      fill: #fff;
+      font-size: 11px;
+      font-weight: 900;
+    }
+    .personnel-attendance-chart .attendance-hover-day:hover .attendance-hover-guide,
+    .personnel-attendance-chart .attendance-hover-day:hover .attendance-hover-dot,
+    .personnel-attendance-chart .attendance-hover-day:hover .attendance-hover-label,
+    .personnel-attendance-chart .attendance-hover-day:focus .attendance-hover-guide,
+    .personnel-attendance-chart .attendance-hover-day:focus .attendance-hover-dot,
+    .personnel-attendance-chart .attendance-hover-day:focus .attendance-hover-label {
+      opacity: 1;
     }
     .personnel-attendance-chart .loading-wrap,
     .personnel-attendance-chart .empty-wrap {
