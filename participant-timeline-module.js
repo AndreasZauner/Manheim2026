@@ -9,13 +9,15 @@ async function installParticipantBootstrap() {
   window.__participantBootstrapInstalled = true;
   import('./auth-login-stabilizer.js?v=login-stabil-20260508-1')
     .catch(error => console.error('Login-Stabilisierung konnte nicht geladen werden', error));
-  import('./personal-share-view.js?v=chart-hover-20260512-1')
+  import('./personal-share-view.js?v=personal-route-20260513-1')
     .catch(error => console.error('Personal-Freigabe konnte nicht geladen werden', error));
   waitForAppShell().then(loadAppModules);
 }
 
 function isPersonalShareRoute() {
-  return new URLSearchParams(window.location.search).get('share') === 'personal';
+  const pathname = window.location.pathname.replace(/\/+$/, '');
+  const params = new URLSearchParams(window.location.search);
+  return pathname === '/personal' || params.get('share') === 'personal' || params.has('personalstand');
 }
 
 function isAppVisible() {
