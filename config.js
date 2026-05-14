@@ -6,7 +6,8 @@ window.APP_CONFIG = {
 
 window.isManheimShareRoute = function isManheimShareRoute() {
   const params = new URLSearchParams(window.location.search);
-  return window.__manheimShareRoute === 'personal' || params.get('share') === 'personal' || params.has('personalstand');
+  const pathname = window.location.pathname.replace(/\/+$/, '');
+  return window.__manheimShareRoute === 'personal' || pathname === '/personal' || params.get('share') === 'personal' || params.has('personalstand');
 };
 
 window.getManheimSupabaseClient = function getManheimSupabaseClient(createClient) {
@@ -127,7 +128,7 @@ function wait(ms) {
     if (document.querySelector('script[src^="./participant-timeline-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './participant-timeline-module.js?v=chart-hover-20260512-1';
+    script.src = './participant-timeline-module.js?v=personal-route-20260513-1';
     document.head.appendChild(script);
   }
 
