@@ -11,7 +11,8 @@ let state = { client: null, password: '', snapshot: null, error: '', search: '',
 
 function isShareRoute() {
   const params = new URLSearchParams(window.location.search);
-  return params.get('share') === 'personal' || params.has('personalstand');
+  const pathname = window.location.pathname.replace(/\/+$/, '');
+  return pathname === '/personal' || params.get('share') === 'personal' || params.has('personalstand');
 }
 
 function getClient() {

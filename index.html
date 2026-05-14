@@ -7,11 +7,12 @@
   <link rel="icon" type="image/png" href="./assets/favicon.png">
   <link rel="stylesheet" href="./styles.css" />
   <link rel="stylesheet" href="./styles-fix.css?v=calendar-visibility-20260512-1" />
-  <script src="./config.js?v=calendar-nav-fix-20260511-1"></script>
+  <script src="./config.js?v=personal-route-20260513-1"></script>
   <script>
     (function markPersonalShareRoute() {
       const params = new URLSearchParams(window.location.search);
-      if (params.get('share') === 'personal' || params.has('personalstand')) {
+      const pathname = window.location.pathname.replace(/\/+$/, '');
+      if (pathname === '/personal' || params.get('share') === 'personal' || params.has('personalstand')) {
         window.__manheimShareRoute = 'personal';
         document.documentElement.classList.add('personal-share-boot');
       }
@@ -303,7 +304,7 @@
       }
     });
     if (window.__manheimShareRoute === 'personal') {
-      importManheimModule('./personal-share-view.js?v=personal-chart-anchor-20260512-1', 'Personal-Share-Ansicht');
+      importManheimModule('./personal-share-view.js?v=personal-route-20260513-1', 'Personal-Share-Ansicht');
     } else {
       importManheimModule('./app.js?v=calendar-visibility-20260512-1', 'Haupt-App');
       importManheimModule('./open-points-module.js?v=open-points-20260503-1', 'Arbeitsliste');
