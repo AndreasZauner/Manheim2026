@@ -43,10 +43,10 @@ function renderRoot() {
 }
 
 function injectStyles() {
-  if (!document.querySelector('link[href^="./participant-planning-module.css"]')) {
+  if (!document.querySelector('link[href^="/participant-planning-module.css"], link[href^="./participant-planning-module.css"]')) {
     const link = document.createElement('link');
     link.rel = 'stylesheet';
-    link.href = './participant-planning-module.css?v=planning-20260504-2';
+    link.href = '/participant-planning-module.css?v=planning-20260504-2';
     document.head.appendChild(link);
   }
   if (document.getElementById('personalShareStyles')) return;
@@ -65,7 +65,7 @@ function renderLocked() {
   root.innerHTML = `
     <section class="personal-share-login personal-share-card">
       <div class="personal-share-login-brand">
-        <img class="personal-share-login-logo" src="./assets/psa-logo.png?v=20260510" alt="Kerpen-Manheim 2026 Lehrgrabung Planer">
+        <img class="personal-share-login-logo" src="/assets/psa-logo.png?v=20260510" alt="Kerpen-Manheim 2026 Lehrgrabung Planer">
       </div>
       <div class="personal-share-login-panel">
         <span class="personal-share-login-kicker">Geschützter Zugang</span>
