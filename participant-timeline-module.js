@@ -53,6 +53,10 @@ async function loadAppModules() {
     );
   }
   imports.push(
+    import('./participant-type-editor-module.js?v=person-type-edit-20260519-1')
+      .catch(error => console.error('Gruppenbearbeitung konnte nicht geladen werden', error))
+  );
+  imports.push(
     import('./participant-role-order-module.js?v=role-order-20260504-2')
       .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
   );
