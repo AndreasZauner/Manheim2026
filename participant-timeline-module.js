@@ -48,21 +48,17 @@ async function loadAppModules() {
   );
   if (!window.__participantPlanningInstalled) {
     imports.push(
-      import('./participant-planning-module.js?v=external-helpers-20260512-1')
+      import('./participant-planning-module.js?v=person-type-edit-20260519-1')
         .catch(error => console.error('Teilnehmerplanung konnte nicht geladen werden', error))
     );
   }
   imports.push(
-    import('./participant-type-editor-module.js?v=person-type-edit-20260519-1')
-      .catch(error => console.error('Gruppenbearbeitung konnte nicht geladen werden', error))
-  );
-  imports.push(
-    import('./material-module.js?v=material-20260527-1')
-      .catch(error => console.error('Materialmodul konnte nicht geladen werden', error))
-  );
-  imports.push(
     import('./participant-role-order-module.js?v=role-order-20260504-2')
       .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
+  );
+  imports.push(
+      import('./material-module.js?v=material-list-20260527-1')
+      .catch(error => console.error('Materialmodul konnte nicht geladen werden', error))
   );
   imports.push(
       import('./personnel-attendance-chart-module.js?v=chart-hover-20260512-1')
