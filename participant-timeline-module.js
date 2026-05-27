@@ -57,6 +57,10 @@ async function loadAppModules() {
       .catch(error => console.error('Gruppenbearbeitung konnte nicht geladen werden', error))
   );
   imports.push(
+    import('./material-module.js?v=material-20260527-1')
+      .catch(error => console.error('Materialmodul konnte nicht geladen werden', error))
+  );
+  imports.push(
     import('./participant-role-order-module.js?v=role-order-20260504-2')
       .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
   );
