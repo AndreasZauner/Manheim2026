@@ -11,6 +11,8 @@ async function installParticipantBootstrap() {
     .catch(error => console.error('Login-Stabilisierung konnte nicht geladen werden', error));
   import('./personal-share-view.js?v=personal-route-20260513-1')
     .catch(error => console.error('Personal-Freigabe konnte nicht geladen werden', error));
+  import('./german-umlaut-normalizer.js?v=umlaute-20260527-1')
+    .catch(error => console.error('Umlaut-Normalisierung konnte nicht geladen werden', error));
   waitForAppShell().then(loadAppModules);
 }
 
