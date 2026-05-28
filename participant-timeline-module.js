@@ -63,7 +63,7 @@ async function loadAppModules() {
       .catch(error => console.error('Materialmodul konnte nicht geladen werden', error))
   );
   imports.push(
-      import('./material-layout-polish.js?v=source-columns-20260528-2')
+      import('./material-layout-polish.js?v=source-columns-20260528-3')
       .catch(error => console.error('Material-Layout konnte nicht geladen werden', error))
   );
   imports.push(
