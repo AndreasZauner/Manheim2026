@@ -3,6 +3,15 @@ const SOURCE_LABELS = [
   ['lvr', 'LVR'],
   ['privat', 'Privat']
 ];
+const BOX_SCHEME = [
+  ['box-team', ['Teamkiste', 'Teamkisten']],
+  ['box-documentation', ['Dokumentationskiste', 'Doku-']],
+  ['box-finds', ['Fundverwaltung', 'Fundkiste', 'Eurobox']],
+  ['box-it', ['IT-', 'Fotokiste', 'Foto']],
+  ['box-safety', ['PSA', 'Erste-Hilfe']],
+  ['box-local', ['vor Ort']],
+  ['box-office', ['Grabungsb', 'Büro']]
+];
 
 installMaterialLayoutPolish();
 
@@ -17,7 +26,7 @@ function injectPolishStylesheet() {
   if (document.querySelector('link[href^="./material-layout-polish.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = './material-layout-polish.css?v=source-columns-20260528-1';
+  link.href = './material-layout-polish.css?v=source-columns-20260528-2';
   document.head.appendChild(link);
 }
 
@@ -29,9 +38,10 @@ function polishMaterialLayout() {
   });
 
   document.querySelectorAll('.material-card').forEach(card => {
-    if (card.querySelector('.material-quantity')) return;
     const meta = card.querySelector('.material-meta');
     const spans = [...(meta?.querySelectorAll('span') || [])];
+    spans.forEach(markBoxSpan);
+    if (card.querySelector('.material-quantity')) return;
     const soll = takeFact(spans, 'Soll');
     const ist = takeFact(spans, 'Ist');
     const quantity = document.createElement('div');
@@ -45,6 +55,13 @@ function polishMaterialLayout() {
     if (state) state.insertAdjacentElement('beforebegin', quantity);
     else card.querySelector('.material-actions')?.insertAdjacentElement('beforebegin', quantity);
   });
+}
+
+function markBoxSpan(span) {
+  const text = span.textContent.trim();
+  const box = BOX_SCHEME.find(([, needles]) => needles.some(needle => text.includes(needle)));
+  if (!box) return;
+  span.classList.add('material-box-chip', box[0]);
 }
 
 function takeFact(spans, label) {
