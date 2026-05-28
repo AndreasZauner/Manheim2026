@@ -9,7 +9,7 @@ async function installParticipantBootstrap() {
   window.__participantBootstrapInstalled = true;
   import('./auth-login-stabilizer.js?v=login-stabil-20260508-1')
     .catch(error => console.error('Login-Stabilisierung konnte nicht geladen werden', error));
-  import('./personal-share-view.js?v=personal-route-20260513-1')
+  import('./personal-share-view.js?v=cancelled-20260528-1')
     .catch(error => console.error('Personal-Freigabe konnte nicht geladen werden', error));
   import('./german-umlaut-normalizer.js?v=umlaute-20260527-1')
     .catch(error => console.error('Umlaut-Normalisierung konnte nicht geladen werden', error));
@@ -50,13 +50,17 @@ async function loadAppModules() {
   );
   if (!window.__participantPlanningInstalled) {
     imports.push(
-      import('./participant-planning-module.js?v=person-type-edit-20260519-1')
+      import('./participant-planning-module.js?v=cancelled-20260528-1')
         .catch(error => console.error('Teilnehmerplanung konnte nicht geladen werden', error))
     );
   }
   imports.push(
     import('./participant-role-order-module.js?v=role-order-20260504-2')
       .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
+  );
+  imports.push(
+    import('./participant-cancelled-polish.js?v=cancelled-20260528-1')
+      .catch(error => console.error('Abgesagt-Sortierung konnte nicht geladen werden', error))
   );
   imports.push(
       import('./material-module.js?v=material-source-columns-20260528-1')
