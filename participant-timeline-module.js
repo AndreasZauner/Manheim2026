@@ -59,8 +59,12 @@ async function loadAppModules() {
       .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
   );
   imports.push(
-      import('./material-module.js?v=material-list-20260527-1')
+      import('./material-module.js?v=material-source-columns-20260528-1')
       .catch(error => console.error('Materialmodul konnte nicht geladen werden', error))
+  );
+  imports.push(
+      import('./material-layout-polish.js?v=source-columns-20260528-1')
+      .catch(error => console.error('Material-Layout konnte nicht geladen werden', error))
   );
   imports.push(
       import('./personnel-attendance-chart-module.js?v=chart-hover-20260512-1')
