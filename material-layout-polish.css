@@ -1,0 +1,66 @@
+.material-source-section.source-lmu {
+  border-color: #b9ddff;
+}
+
+.material-source-section.source-lmu .material-source-head {
+  background: #e4f3ff;
+  color: #0d4f82;
+  border-bottom-color: #b9ddff;
+}
+
+.material-source-section.source-lvr {
+  border-color: #ffd2a8;
+}
+
+.material-source-section.source-lvr .material-source-head {
+  background: #fff0df;
+  color: #8a4100;
+  border-bottom-color: #ffd2a8;
+}
+
+.material-source-section.source-privat .material-source-head {
+  background: #eef4f0;
+  color: #2d5a3f;
+}
+
+.material-card-main {
+  grid-template-columns: minmax(260px, 1fr) minmax(150px, 190px) auto;
+  column-gap: 26px;
+  row-gap: 8px;
+  align-items: center;
+}
+
+.material-state,
+.material-actions [data-material-restore] {
+  display: none !important;
+}
+
+.material-quantity {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  color: var(--text);
+  font-size: .9rem;
+}
+
+.material-quantity span {
+  display: grid;
+  gap: 2px;
+}
+
+.material-quantity strong {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+@media (max-width: 760px) {
+  .material-card-main {
+    grid-template-columns: 1fr;
+  }
+
+  .material-quantity {
+    max-width: 260px;
+  }
+}
