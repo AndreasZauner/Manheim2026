@@ -1,11 +1,22 @@
 installParticipantCancelledPolish();
 
+let polishScheduled = false;
+
 function installParticipantCancelledPolish() {
   injectCancelledStyles();
   polishCancelledRows();
-  const observer = new MutationObserver(polishCancelledRows);
+  const observer = new MutationObserver(scheduleCancelledPolish);
   observer.observe(document.body, { childList: true, subtree: true });
-  window.setInterval(polishCancelledRows, 900);
+  window.setInterval(scheduleCancelledPolish, 1500);
+}
+
+function scheduleCancelledPolish() {
+  if (polishScheduled) return;
+  polishScheduled = true;
+  window.requestAnimationFrame(() => {
+    polishScheduled = false;
+    polishCancelledRows();
+  });
 }
 
 function polishCancelledRows() {
@@ -25,10 +36,16 @@ function polishCancelledRows() {
     }
   });
 
-  rows
+  const orderedRows = [...host.querySelectorAll('.personnel-row')];
+  const activeRows = orderedRows.filter(row => !row.classList.contains('is-cancelled'));
+  const cancelledRows = orderedRows
     .filter(row => row.classList.contains('is-cancelled'))
-    .sort((a, b) => a.textContent.localeCompare(b.textContent, 'de'))
-    .forEach(row => host.appendChild(row));
+    .sort((a, b) => a.textContent.localeCompare(b.textContent, 'de'));
+  const desiredRows = [...activeRows, ...cancelledRows];
+
+  desiredRows.forEach((row, index) => {
+    if (host.children[index] !== row) host.appendChild(row);
+  });
 
   updateVisibleStatistics(host);
 }
