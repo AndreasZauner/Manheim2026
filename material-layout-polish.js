@@ -40,7 +40,8 @@ function polishMaterialLayout() {
   document.querySelectorAll('.material-card').forEach(card => {
     const meta = card.querySelector('.material-meta');
     const spans = [...(meta?.querySelectorAll('span') || [])];
-    spans.forEach(markBoxSpan);
+    const isLvr = card.closest('.material-source-section')?.classList.contains('source-lvr');
+    spans.forEach(span => markBoxSpan(span, isLvr));
     if (card.querySelector('.material-quantity')) return;
     const soll = takeFact(spans, 'Soll');
     const ist = takeFact(spans, 'Ist');
@@ -57,8 +58,9 @@ function polishMaterialLayout() {
   });
 }
 
-function markBoxSpan(span) {
+function markBoxSpan(span, isLvr = false) {
   const text = span.textContent.trim();
+  if (isLvr && text === 'vor Ort') return;
   const box = BOX_SCHEME.find(([, needles]) => needles.some(needle => text.includes(needle)));
   if (!box) return;
   span.classList.add('material-box-chip', box[0]);
