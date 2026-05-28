@@ -59,7 +59,7 @@ async function loadAppModules() {
       .catch(error => console.error('Rollenreihenfolge konnte nicht geladen werden', error))
   );
   imports.push(
-    import('./participant-cancelled-polish.js?v=cancelled-20260528-1')
+    import('./participant-cancelled-polish.js?v=cancelled-20260528-2')
       .catch(error => console.error('Abgesagt-Sortierung konnte nicht geladen werden', error))
   );
   imports.push(
