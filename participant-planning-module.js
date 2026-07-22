@@ -58,7 +58,7 @@ function injectStylesheet() {
   if (document.querySelector('link[href^="./participant-planning-module.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = './participant-planning-module.css?v=external-helpers-20260512-1';
+  link.href = './participant-planning-module.css?v=person-button-integrated-20260722-1';
   document.head.appendChild(link);
 }
 
@@ -125,7 +125,8 @@ async function loadUser() {
 
   const { data, error } = await state.client.from('profiles').select('role,is_active').eq('id', state.userId).single();
   if (error) throw error;
-  state.isManager = Boolean(data?.is_active) && MANAGER_ROLES.includes(data?.role);
+  state.isManager = data?.role === 'admin'
+    || (Boolean(data?.is_active) && MANAGER_ROLES.includes(data?.role));
 }
 
 function renameNavigation() {
@@ -229,6 +230,7 @@ function renderDeployment() {
         <h3>Personaleinsatz</h3>
         <p>Zeitr\u00e4ume, Status und Hinweise im \u00dcberblick. Die Balken basieren auf den echten Supabase-Teilnehmerdaten.</p>
       </div>
+      ${state.isManager ? '<button class="btn primary personnel-new-person-btn" type="button" data-open-person-drawer>Neue Person</button>' : ''}
     </section>
     <div class="personnel-topbar">
       <div class="personnel-summary">${summaryCards(list)}</div>
@@ -287,6 +289,9 @@ function emptyMessage() {
 }
 
 function bindDeploymentUi() {
+  document.querySelector('[data-open-person-drawer]')?.addEventListener('click', () => {
+    window.dispatchEvent(new CustomEvent('manheim:open-person-drawer'));
+  });
   document.getElementById('personnelSearch')?.addEventListener('input', event => {
     state.search = event.target.value;
     renderDeployment();

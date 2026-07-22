@@ -36,6 +36,7 @@ async function installV21Phase12() {
   injectStylesheet();
   setupSupabase();
   bindAuthStateListener();
+  window.addEventListener('manheim:open-person-drawer', openDrawer);
   await loadUser();
   applyV21Shell();
   installShortStabilizer();
@@ -74,7 +75,8 @@ async function loadUser() {
     state.isManager = false;
     return;
   }
-  state.isManager = Boolean(data?.is_active) && MANAGER_ROLES.includes(data?.role);
+  state.isManager = data?.role === 'admin'
+    || (Boolean(data?.is_active) && MANAGER_ROLES.includes(data?.role));
 }
 
 function bindAuthStateListener() {
@@ -203,28 +205,7 @@ function enhancePersonal() {
     head.querySelector('h3')?.replaceChildren(document.createTextNode('Personaleinsatz'));
     head.querySelector('.muted, p')?.replaceChildren(document.createTextNode('Zeiträume, Verbindlichkeit und Hinweise.'));
   }
-  if (!state.isManager) {
-    document.getElementById('v21PersonnelActions')?.remove();
-  }
-  if (head && state.isManager) {
-    let actions = document.getElementById('v21PersonnelActions');
-    if (!actions) {
-      actions = document.createElement('div');
-      actions.id = 'v21PersonnelActions';
-      actions.className = 'personnel-primary-actions';
-      head.appendChild(actions);
-    }
-    let button = document.getElementById('openV21PersonDrawer');
-    if (!button) {
-      button = document.createElement('button');
-      button.id = 'openV21PersonDrawer';
-      button.className = 'btn primary';
-      button.type = 'button';
-      button.textContent = 'Neue Person';
-      button.addEventListener('click', openDrawer);
-    }
-    if (button.parentElement !== actions) actions.appendChild(button);
-  }
+  document.getElementById('v21PersonnelActions')?.remove();
   if (!document.getElementById('v21PersonDrawer')) {
     document.body.insertAdjacentHTML('beforeend', drawerMarkup());
     bindDrawer();
