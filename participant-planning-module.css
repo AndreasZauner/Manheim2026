@@ -17,6 +17,11 @@
 }
 
 .personnel-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
   background: linear-gradient(135deg, #17324a 0%, #24506b 100%);
   color: #fff;
   border-radius: 18px;
@@ -41,6 +46,10 @@
   margin: 0;
   max-width: 920px;
   opacity: .9;
+}
+
+.personnel-new-person-btn {
+  flex: 0 0 auto;
 }
 
 .personnel-topbar {
