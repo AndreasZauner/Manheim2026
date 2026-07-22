@@ -77,7 +77,7 @@ async function loadAppModules() {
         .catch(error => console.error('Diagrammplatzierung konnte nicht stabilisiert werden', error)))
   );
   imports.push(
-    import('./v21-phase12-module.js?v=calendar-nav-fix-20260511-1')
+    import('./v21-phase12-module.js?v=person-button-stable-20260713-1')
       .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
   );
   imports.push(

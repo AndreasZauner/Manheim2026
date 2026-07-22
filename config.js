@@ -128,7 +128,7 @@ function wait(ms) {
     if (document.querySelector('script[src^="./participant-timeline-module.js"]')) return;
     const script = document.createElement('script');
     script.type = 'module';
-    script.src = './participant-timeline-module.js?v=personal-route-20260513-1';
+    script.src = './participant-timeline-module.js?v=person-button-stable-20260713-1';
     document.head.appendChild(script);
   }
 

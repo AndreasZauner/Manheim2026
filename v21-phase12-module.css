@@ -30,3 +30,10 @@
   border: 1px solid #b9dfd2;
   color: #28725b;
 }
+
+.personnel-primary-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
