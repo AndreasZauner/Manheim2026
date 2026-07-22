@@ -50,7 +50,7 @@ async function loadAppModules() {
   );
   if (!window.__participantPlanningInstalled) {
     imports.push(
-      import('./participant-planning-module.js?v=cancelled-20260528-1')
+      import('./participant-planning-module.js?v=person-button-integrated-20260722-1')
         .catch(error => console.error('Teilnehmerplanung konnte nicht geladen werden', error))
     );
   }
@@ -77,7 +77,7 @@ async function loadAppModules() {
         .catch(error => console.error('Diagrammplatzierung konnte nicht stabilisiert werden', error)))
   );
   imports.push(
-    import('./v21-phase12-module.js?v=person-button-stable-20260713-1')
+    import('./v21-phase12-module.js?v=person-button-integrated-20260722-1')
       .catch(error => console.error('v2.1-Umstellung konnte nicht geladen werden', error))
   );
   imports.push(
