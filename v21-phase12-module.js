@@ -45,7 +45,7 @@ function injectStylesheet() {
   if (document.querySelector('link[href^="./v21-phase12-module.css"]')) return;
   const link = document.createElement('link');
   link.rel = 'stylesheet';
-  link.href = './v21-phase12-module.css?v=v21-phase12-1';
+  link.href = './v21-phase12-module.css?v=person-button-stable-20260713-1';
   document.head.appendChild(link);
 }
 
@@ -203,13 +203,27 @@ function enhancePersonal() {
     head.querySelector('h3')?.replaceChildren(document.createTextNode('Personaleinsatz'));
     head.querySelector('.muted, p')?.replaceChildren(document.createTextNode('Zeiträume, Verbindlichkeit und Hinweise.'));
   }
-  const controls = document.querySelector('.personnel-controls');
   if (!state.isManager) {
-    document.getElementById('openV21PersonDrawer')?.remove();
+    document.getElementById('v21PersonnelActions')?.remove();
   }
-  if (controls && state.isManager && !document.getElementById('openV21PersonDrawer')) {
-    controls.insertAdjacentHTML('beforeend', '<button class="btn primary" type="button" id="openV21PersonDrawer">Neue Person</button>');
-    document.getElementById('openV21PersonDrawer')?.addEventListener('click', openDrawer);
+  if (head && state.isManager) {
+    let actions = document.getElementById('v21PersonnelActions');
+    if (!actions) {
+      actions = document.createElement('div');
+      actions.id = 'v21PersonnelActions';
+      actions.className = 'personnel-primary-actions';
+      head.appendChild(actions);
+    }
+    let button = document.getElementById('openV21PersonDrawer');
+    if (!button) {
+      button = document.createElement('button');
+      button.id = 'openV21PersonDrawer';
+      button.className = 'btn primary';
+      button.type = 'button';
+      button.textContent = 'Neue Person';
+      button.addEventListener('click', openDrawer);
+    }
+    if (button.parentElement !== actions) actions.appendChild(button);
   }
   if (!document.getElementById('v21PersonDrawer')) {
     document.body.insertAdjacentHTML('beforeend', drawerMarkup());
